@@ -51,10 +51,21 @@ namespace Revit.SDK.Samples.ParameterUtils.CS
 
             foreach (Face geomFace in solid.Faces)
             {
-
+                if (geomFace.Area > 0)
+                    faceList.Add(geomFace);
             }
             return null;
         }
+
+
+
+
+
+
+
+
+
+
 
 
     }
