@@ -30,7 +30,7 @@ using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
 using System.Windows.Forms;
 
-namespace Revit.SDK.Samples.ParameterUtils.CS
+namespace ParameterUtils
 {
     /// <summary>
     /// display a Revit element property-like form related to the selected element.

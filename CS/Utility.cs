@@ -11,7 +11,7 @@ using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
 
 
-namespace Revit.SDK.Samples.ParameterUtils.CS
+namespace ParameterUtils
 {
     class Utility
     {

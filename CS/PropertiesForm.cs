@@ -29,7 +29,7 @@ using System.Drawing;
 using System.Text;
 using System.Windows.Forms;
 
-namespace Revit.SDK.Samples.ParameterUtils.CS
+namespace ParameterUtils
 {
     public partial class PropertiesForm : System.Windows.Forms.Form
     {

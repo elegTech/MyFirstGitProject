@@ -21,7 +21,7 @@
 //
 
 
-namespace Revit.SDK.Samples.ParameterUtils.CS
+namespace ParameterUtils
 {
     partial class PropertiesForm
     {

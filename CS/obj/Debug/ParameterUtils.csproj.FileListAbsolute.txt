@@ -90,7 +90,7 @@ C:\MyProjects\Revit\CS\bin\Debug\ru-RU\AdWindows.resources.dll
 C:\MyProjects\Revit\CS\bin\Debug\zh-CN\AdWindows.resources.dll
 C:\MyProjects\Revit\CS\bin\Debug\zh-TW\AdWindows.resources.dll
 C:\MyProjects\Revit\CS\obj\Debug\ParameterUtils.csprojResolveAssemblyReference.cache
-C:\MyProjects\Revit\CS\obj\Debug\Revit.SDK.Samples.ParameterUtils.CS.PropertiesForm.resources
 C:\MyProjects\Revit\CS\obj\Debug\ParameterUtils.csproj.GenerateResource.Cache
 C:\MyProjects\Revit\CS\obj\Debug\ParameterUtils.dll
 C:\MyProjects\Revit\CS\obj\Debug\ParameterUtils.pdb
+C:\MyProjects\Revit\CS\obj\Debug\ParameterUtils.PropertiesForm.resources
