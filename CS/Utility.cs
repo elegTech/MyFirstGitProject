@@ -56,17 +56,5 @@ namespace Revit.SDK.Samples.ParameterUtils.CS
             }
             return null;
         }
-
-
-
-
-
-
-
-
-
-
-
-
     }
 }
