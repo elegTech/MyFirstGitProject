@@ -15,6 +15,7 @@ namespace ParameterUtils
 {
     class Utility
     {
+        public static double ZERO = 0.000000000000; 
 
         public static List<Solid> GetSolid(Element element, Options option)
         {
