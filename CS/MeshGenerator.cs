@@ -13,10 +13,10 @@ using Autodesk.Revit.UI.Selection;
 namespace ParameterUtils
 {
 
-    public enum FillStyle { Straight, Dagonal }
+    public enum FillStyle { Straight, Diagonal }
     
     /// <summary>
-    /// It only supports straight paving since the dagonal paving can be converted into this style. 
+    /// It only supports straight paving since diagonal paving can be converted into this style. 
     /// </summary>
     class MeshGenerator
     {
@@ -68,7 +68,7 @@ namespace ParameterUtils
             }
             set
             {
-                if(value < Double.Epsilon)
+                if(value < Utility.GAPTHRESHOLD)
                     mMeshWidth = Utility.ZERO;
                 else
                     mMeshWidth = value;
@@ -83,7 +83,7 @@ namespace ParameterUtils
             }
             set
             {
-                if (value < Double.Epsilon)
+                if (value < Utility.GAPTHRESHOLD)
                     mMeshLength = Utility.ZERO;
                 else
                     mMeshLength = value;
@@ -98,7 +98,7 @@ namespace ParameterUtils
             }
             set
             {
-                if (value < Double.Epsilon)
+                if (value < Utility.GAPTHRESHOLD)
                     mGap = Utility.ZERO;
                 else
                     mGap = value;
@@ -107,15 +107,25 @@ namespace ParameterUtils
 
         public Mesh[] GenerateMesh()
         {
-            
 
 
+
+
+
+
+            return null;
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
+        private double CalculateMeshNumber(double range, double meshDimension, double gap)
+        {
 
 
 
         }
-
-
 
     }
 }

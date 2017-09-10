@@ -15,7 +15,13 @@ namespace ParameterUtils
 {
     class Utility
     {
-        public static double ZERO = 0.000000000000; 
+        public static double ZERO = 0.000000000000;
+
+        /// <summary>
+        /// Threshold value for tile gap, any gap below this value
+        /// will be considered as ZERO defined above.
+        /// </summary>
+        public static double GAPTHRESHOLD = 0.500000000000;
 
         public static List<Solid> GetSolid(Element element, Options option)
         {
