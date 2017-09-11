@@ -18,10 +18,9 @@ namespace ParameterUtils
         public static double ZERO = 0.000000000000;
 
         /// <summary>
-        /// Threshold value for tile gap, any gap below this value
-        /// will be considered as ZERO defined above.
+        /// The number of mesh vertex.
         /// </summary>
-        public static double GAPTHRESHOLD = 0.500000000000;
+        public static int MESHVERTEXNUMBER = 4;
 
         public static List<Solid> GetSolid(Element element, Options option)
         {

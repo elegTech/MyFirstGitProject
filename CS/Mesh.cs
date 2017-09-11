@@ -50,7 +50,7 @@ namespace ParameterUtils
         public SquareMesh(XYZ[] vertices)
         {
             // A mesh has only 4 vertices.
-            Contract.Assert(vertices.Length == 4);
+            Contract.Assert(vertices.Length == Utility.MESHVERTEXNUMBER);
 
             this.vertexArray = new XYZ[vertices.Length];
             vertices.CopyTo(this.vertexArray, 0);            
