@@ -32,7 +32,14 @@ namespace ParameterUtils
     }
 
     /// <summary>
-    /// It models a square mesh, though a mesh's geometry is usually represented by a rectangle.
+    /// It models a rectangle mesh, though a mesh's geometry is usually represented by a square.
+    /// In this context, the bottom left vertex is No.0, the bottom right vertex is No.1, 
+    /// the top right vertex is No.2, and the top left vertex is No.3.
+    /// Such vertex coding rule is consistent with the usual guideline.
+    /// 3 ........ 2
+    ///   .      .
+    ///   .      .
+    /// 0 ........ 1
     /// </summary>
     public class SquareMesh:IMeshProvider
     {
@@ -49,24 +56,59 @@ namespace ParameterUtils
         /// <param name="vertices"></param>
         public SquareMesh(XYZ[] vertices)
         {
-            // A mesh has only 4 vertices.
+            // A mesh has specific vertices.
             Contract.Assert(vertices.Length == Utility.MESHVERTEXNUMBER);
 
-            this.vertexArray = new XYZ[vertices.Length];
-            vertices.CopyTo(this.vertexArray, 0);            
+            vertexArray = new XYZ[Utility.MESHVERTEXNUMBER];
+            vertices.CopyTo(vertexArray, 0);            
+        }
+
+
+        /// <summary>
+        /// Create a new square mesh using location (No.0 vertex), length and width parameters.
+        /// The lengthDirection represents the dimension No.0 vertex -> No.1 vertex, while the 
+        /// widthDirection the dimension No.1 -> No.2 vertex.
+        /// </summary>
+        /// <param name="location">The position of No.0 vertex of the mesh.</param>
+        /// <param name="lengthDirection">The direction that No.0 vertex points to No.1 vertex.</param>
+        /// <param name="widthDirection">The direction that No.1 vertex points to No.2 vertex.</param>
+        /// <param name="length">The dimension along lengthDirection.</param>
+        /// <param name="width">The dimension along widthDirection.</param>
+        public SquareMesh(XYZ location, XYZ lengthDirection, XYZ widthDirection, double length, double width)
+        {
+            Contract.Assert(null != location && null != lengthDirection && null != widthDirection && length > 0 && width > 0);
+
+            vertexArray = new XYZ[Utility.MESHVERTEXNUMBER];
+
+            vertexArray[0] = new XYZ(location.X, location.Y, location.Z);
+            vertexArray[1] = new XYZ(location.X, location.Y, location.Z) + lengthDirection.Normalize() * length;
+            vertexArray[2] = new XYZ(vertexArray[1].X, vertexArray[1].Y, vertexArray[1].Z) + widthDirection.Normalize() * width;
+            vertexArray[3] = new XYZ(vertexArray[0].X, vertexArray[0].Y, vertexArray[0].Z) + widthDirection.Normalize() * width;
+        }
+
+
+        public XYZ GetVertex(int vertexNo)
+        {
+            Contract.Assert(vertexNo > 0 && vertexNo < Utility.MESHVERTEXNUMBER);
+            return vertexArray[vertexNo];
         }
 
         /// <summary>
-        /// The area is the square of side length.
+        /// The side length multiplies the width is the area.
         /// </summary>
         /// <returns></returns>
         double IMeshProvider.GetArea()
         {
-            double sideLength = vertexArray[0].DistanceTo(vertexArray[1]);
+            double length = vertexArray[0].DistanceTo(vertexArray[1]);
+            double width = vertexArray[1].DistanceTo(vertexArray[2]);
 
-            return sideLength * sideLength;
+            return length * width;
         }
 
+        /// <summary>
+        /// Returning the clone of vertices prevents modification of original data since it's private. 
+        /// </summary>
+        /// <returns>Clone of vetices</returns>
         XYZ[] IMeshProvider.GetVertices()
         {
             return (XYZ[])vertexArray.Clone();

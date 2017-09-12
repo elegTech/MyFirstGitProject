@@ -22,6 +22,11 @@ namespace ParameterUtils
         /// </summary>
         public static int MESHVERTEXNUMBER = 4;
 
+        /// <summary>
+        /// If an area's dimension is less than this threshold value (unit: mm), no mesh would be generted.
+        /// </summary>
+        public static double DIMENSIONFLOOR = 10.000000000000;
+
         public static List<Solid> GetSolid(Element element, Options option)
         {
             Contract.Requires(null != element && null != option);
