@@ -62,6 +62,7 @@
     <Compile Include="AreaPaveManager.cs" />
     <Compile Include="Mesh.cs" />
     <Compile Include="MeshGenerator.cs" />
+    <Compile Include="PolygonArea.cs" />
     <Compile Include="Utility.cs" />
     <Compile Include="Command.cs" />
     <Compile Include="FamilyInstanceResizer.cs" />

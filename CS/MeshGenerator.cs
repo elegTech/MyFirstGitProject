@@ -57,7 +57,7 @@ namespace ParameterUtils
         private Line3D[] mLineArrayInRow;
 
 
-        private SquareMesh[,] mMeshArray;
+        private SquareMesh[,] mMeshArrays;
 
         public SqureMeshGenerator(XYZ[] rectangleArea, double gap, double meshLength, double meshWidth)
         {
@@ -116,14 +116,14 @@ namespace ParameterUtils
         }
 
 
-        public SquareMesh[,] MeshArray
+        public SquareMesh[,] MeshArrays
         {
             get
             {
-                if (null == mMeshArray)
+                if (null == mMeshArrays)
                     GenerateMesh();
 
-                return mMeshArray;
+                return mMeshArrays;
             }
         }
 
@@ -193,7 +193,7 @@ namespace ParameterUtils
             if (meshNumberInRow < 0 || meshNumberInColumn < 0)
                 return false;
 
-            mMeshArray = new SquareMesh[meshNumberInRow, meshNumberInColumn];
+            mMeshArrays = new SquareMesh[meshNumberInRow, meshNumberInColumn];
             XYZ meshLocation = null;
             XYZ lengthDirection = mRectangleArea[1] - mRectangleArea[0];
             XYZ widthDirection = mRectangleArea[3] - mRectangleArea[0];
@@ -205,13 +205,13 @@ namespace ParameterUtils
                 meshLocation = mRectangleArea[0] + i * (widthDirection.Normalize() * (mMeshWidth + mGap));
 
                 // Given the location information, a square mesh can 
-                mMeshArray[i, 0] = new SquareMesh(meshLocation, lengthDirection, widthDirection, mMeshLength, mMeshWidth);
+                mMeshArrays[i, 0] = new SquareMesh(meshLocation, lengthDirection, widthDirection, mMeshLength, mMeshWidth);
                 for (int j=1; j<meshNumberInColumn; j++)
                 {
                     // The location of mesh along length direction is calculated similarly, i.e., each previous mesh's location 
                     // in the same row plusing delta length and gap is the current mesh's location.
-                    meshLocation = mMeshArray[i, j-1].GetVertex(0) + j * (lengthDirection.Normalize() * (mMeshLength + mGap));
-                    mMeshArray[i, j] = new SquareMesh(meshLocation, lengthDirection, widthDirection, mMeshLength, mMeshWidth);
+                    meshLocation = mMeshArrays[i, j-1].GetVertex(0) + j * (lengthDirection.Normalize() * (mMeshLength + mGap));
+                    mMeshArrays[i, j] = new SquareMesh(meshLocation, lengthDirection, widthDirection, mMeshLength, mMeshWidth);
                 }
             }
             
@@ -225,15 +225,15 @@ namespace ParameterUtils
         /// <returns></returns>
         private bool CanGenerateMeshLines()
         {
-            if(null == mMeshArray)
+            if(null == mMeshArrays)
                 return false;
 
             return true;
         }
 
         /// <summary>
-        /// Genereate mesh lines from the meshes. A mesh line is represented by two points on rectangle area boundaries.
-        /// Each line is parallel to length or width boundaries.
+        /// Genereate mesh lines from the meshes. A mesh line is represented by two points 
+        /// on rectangle area boundaries. Each line is parallel to length or width boundaries.
         /// </summary>
         /// <returns></returns>
         private bool GenerateMeshLines()
@@ -248,36 +248,42 @@ namespace ParameterUtils
             mLineArrayInColumn = new Line3D[meshNumberInColumn * 2];
             mLineArrayInRow = new Line3D[meshNumberInRow * 2];
 
-            // Record the column & row lines consist of meshes, each line is specified by both start & end points.
+            // Record the column & row lines consist of meshes, each line is specified by both 
+            // start & end points. Specifically, for a line, the coordinate value of startpoint
+            // is less than that of endpoint. Namely, startpoint->endpoint should be one of the
+            // following cases: No.0->No.1; No.1->No.2; No.0->No.3; No.3->No.2; 
             Point3D startPoint;
             Point3D endPoint;
             XYZ tempVertex = null;
+            
+            // It records two lines for each mesh on column direction, i.e., No.0->No.3,No.1->No.2.
             for (int j=0; j<meshNumberInColumn; j++)
             {
-                tempVertex = mMeshArray[0, j].GetVertex(0);
+                tempVertex = mMeshArrays[0, j].GetVertex(0);
                 startPoint = new Point3D(tempVertex.X, tempVertex.Y, tempVertex.Z);
-                tempVertex = mMeshArray[meshNumberInRow-1, j].GetVertex(3);
+                tempVertex = mMeshArrays[meshNumberInRow-1, j].GetVertex(3);
                 endPoint = new Point3D(tempVertex.X, tempVertex.Y, tempVertex.Z);
                 mLineArrayInColumn[j*2] = new Line3D(startPoint, endPoint);
 
-                tempVertex = mMeshArray[0, j].GetVertex(1);
+                tempVertex = mMeshArrays[0, j].GetVertex(1);
                 startPoint = new Point3D(tempVertex.X, tempVertex.Y, tempVertex.Z);
-                tempVertex = mMeshArray[meshNumberInRow-1, j].GetVertex(2);
+                tempVertex = mMeshArrays[meshNumberInRow-1, j].GetVertex(2);
                 endPoint = new Point3D(tempVertex.X, tempVertex.Y, tempVertex.Z);
                 mLineArrayInColumn[j*2 + 1] = new Line3D(startPoint, endPoint);                               
             }
 
+            // It records two lines for each mesh on row direction, i.e., No.0->No.1,No.3->No.2.
             for (int i=0; i<meshNumberInRow; i++)
             {
-                tempVertex = mMeshArray[i, 0].GetVertex(0);
+                tempVertex = mMeshArrays[i, 0].GetVertex(0);
                 startPoint = new Point3D(tempVertex.X, tempVertex.Y, tempVertex.Z);
-                tempVertex = mMeshArray[i, meshNumberInColumn-1].GetVertex(1);
+                tempVertex = mMeshArrays[i, meshNumberInColumn-1].GetVertex(1);
                 endPoint = new Point3D(tempVertex.X, tempVertex.Y, tempVertex.Z);
                 mLineArrayInRow[i * 2] = new Line3D(startPoint, endPoint);
 
-                tempVertex = mMeshArray[i, 0].GetVertex(3);
+                tempVertex = mMeshArrays[i, 0].GetVertex(3);
                 startPoint = new Point3D(tempVertex.X, tempVertex.Y, tempVertex.Z);
-                tempVertex = mMeshArray[i, meshNumberInColumn-1].GetVertex(2);
+                tempVertex = mMeshArrays[i, meshNumberInColumn-1].GetVertex(2);
                 endPoint = new Point3D(tempVertex.X, tempVertex.Y, tempVertex.Z);
                 mLineArrayInRow[i * 2 + 1] = new Line3D(startPoint, endPoint);
             }

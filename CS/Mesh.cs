@@ -32,9 +32,9 @@ namespace ParameterUtils
     }
 
     /// <summary>
-    /// It models a rectangle mesh, though a mesh's geometry is usually represented by a square.
-    /// In this context, the bottom left vertex is No.0, the bottom right vertex is No.1, 
-    /// the top right vertex is No.2, and the top left vertex is No.3.
+    /// It models a rectangle mesh, though a mesh's geometry is usually represented 
+    /// by a square. In this context, the bottom left vertex is No.0, the bottom right  
+    /// vertex is No.1, the top right vertex is No.2, and the top left vertex is No.3.
     /// Such vertex coding rule is consistent with the usual guideline.
     /// 3 ........ 2
     ///   .      .

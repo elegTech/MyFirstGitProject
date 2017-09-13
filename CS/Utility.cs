@@ -67,5 +67,63 @@ namespace ParameterUtils
             }
             return null;
         }
+
+        public static List<List<Curve>> GetFaceCurves(Face face)
+        {
+            Contract.Requires(null != face);
+            if (null == face)
+                return null;
+
+            // A face may have holes, therefore it has corresponding inner edge loops.
+            // Each loop and outer boundary need a seperate list to store curve information.
+            List<List<Curve>> curveLists = new List<List<Curve>>();
+            List<Curve> tempCurveList = new List<Curve>();
+
+            EdgeArrayArray edgeArrays = face.EdgeLoops;
+            Curve tempCurve = null;
+            foreach (EdgeArray edges in edgeArrays)
+            {
+                foreach (Edge edge in edges)
+                {
+                    tempCurve = edge.AsCurveFollowingFace(face);
+                    tempCurveList.Add(tempCurve);
+                }
+                curveLists.Add(tempCurveList);
+
+                // Allocate new memory for the next edge list.
+                tempCurveList = new List<Curve>();
+            }
+
+            return curveLists;
+        }
+
+        public static List<List<XYZ>> GetFaceVertex(Face face)
+        {
+            Contract.Requires(null != face);
+            if (null == face)
+                return null;
+
+            // All edges should be obtained first.
+            List<List<Curve>> curveLists = GetFaceCurves(face);
+            if (null == curveLists)
+                return null;
+
+            List<List<XYZ>> vertexLists = new List<List<XYZ>>();
+            List<XYZ> tempVertexList = new List<XYZ>();
+            foreach (List<Curve> curves in curveLists)
+            {
+                foreach (Curve curve in curves)
+                {
+                    tempVertexList.Add(curve.GetEndPoint(0));
+                    tempVertexList.Add(curve.GetEndPoint(1));
+                }
+                vertexLists.Add(tempVertexList);
+
+                // Allocate new memory for the next vertex list.
+                tempVertexList = new List<XYZ>();
+            }
+
+            return vertexLists;
+        }
     }
 }
