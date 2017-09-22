@@ -15,14 +15,16 @@ namespace ParameterUtils
     /// <summary>
     /// This is a mesh interface.
     /// </summary>
-    interface IMeshProvider
+    interface IMeshElement
     {
         /// <summary>
         /// Get mesh vertices, which depends on detailed implementation. 
         /// As a protocol, note that the vertices should be in anticlockwise sequence.
         /// </summary>
         /// <returns>The vertices of the mesh.</returns>
-        XYZ[] GetVertices();
+        XYZ[] GetVertices3D();
+
+        UV[] GetVertices2D();
 
         /// <summary>
         /// Get mesh area.
@@ -41,13 +43,16 @@ namespace ParameterUtils
     ///   .      .
     /// 0 ........ 1
     /// </summary>
-    public class SquareMesh:IMeshProvider
+    public class SquareMesh : IMeshElement
     {
         /// <summary>
         /// Four vertices of a square mesh. VertexArray[0] represents the bottom left vertex.
         /// VertexArray[1] represents the bottom right vertex.
         /// </summary>
-        private XYZ[] vertexArray;
+        private XYZ[] vertex3DArray;
+
+
+        private UV[] vertex2DArray;
 
         /// <summary>
         /// Please note that the input vertex list should be in anticlockwise sequence 
@@ -59,13 +64,24 @@ namespace ParameterUtils
             // A mesh has specific vertices.
             Contract.Assert(vertices.Length == Utility.MESHVERTEXNUMBER);
 
-            vertexArray = new XYZ[Utility.MESHVERTEXNUMBER];
-            vertices.CopyTo(vertexArray, 0);            
+            vertex3DArray = new XYZ[Utility.MESHVERTEXNUMBER];
+            vertices.CopyTo(vertex3DArray, 0);            
         }
 
 
+        public SquareMesh(UV[] vertices)
+        {
+            // A mesh has specific vertices.
+            Contract.Assert(vertices.Length == Utility.MESHVERTEXNUMBER);
+
+            vertex2DArray = new UV[Utility.MESHVERTEXNUMBER];
+            vertices.CopyTo(vertex2DArray, 0);
+        }
+
+
+
         /// <summary>
-        /// Create a new square mesh using location (No.0 vertex), length and width parameters.
+        /// Create a new 3D square mesh using location (No.0 vertex), length and width parameters.
         /// The lengthDirection represents the dimension No.0 vertex -> No.1 vertex, while the 
         /// widthDirection the dimension No.1 -> No.2 vertex.
         /// </summary>
@@ -78,40 +94,100 @@ namespace ParameterUtils
         {
             Contract.Assert(null != location && null != lengthDirection && null != widthDirection && length > 0 && width > 0);
 
-            vertexArray = new XYZ[Utility.MESHVERTEXNUMBER];
+            vertex3DArray = new XYZ[Utility.MESHVERTEXNUMBER];
 
-            vertexArray[0] = new XYZ(location.X, location.Y, location.Z);
-            vertexArray[1] = new XYZ(location.X, location.Y, location.Z) + lengthDirection.Normalize() * length;
-            vertexArray[2] = new XYZ(vertexArray[1].X, vertexArray[1].Y, vertexArray[1].Z) + widthDirection.Normalize() * width;
-            vertexArray[3] = new XYZ(vertexArray[0].X, vertexArray[0].Y, vertexArray[0].Z) + widthDirection.Normalize() * width;
+            vertex3DArray[0] = new XYZ(location.X, location.Y, location.Z);
+            vertex3DArray[1] = new XYZ(location.X, location.Y, location.Z) + lengthDirection.Normalize() * length;
+            vertex3DArray[2] = new XYZ(vertex3DArray[1].X, vertex3DArray[1].Y, vertex3DArray[1].Z) + widthDirection.Normalize() * width;
+            vertex3DArray[3] = new XYZ(vertex3DArray[0].X, vertex3DArray[0].Y, vertex3DArray[0].Z) + widthDirection.Normalize() * width;
         }
 
+        /// <summary>
+        /// Create a new 2D square mesh using location (No.0 vertex), length and width parameters.
+        /// The lengthDirection represents the dimension No.0 vertex -> No.1 vertex, while the 
+        /// widthDirection the dimension No.1 -> No.2 vertex.
+        /// </summary>
+        /// <param name="location">The position of No.0 vertex of the mesh.</param>
+        /// <param name="lengthDirection">The direction that No.0 vertex points to No.1 vertex.</param>
+        /// <param name="widthDirection">The direction that No.1 vertex points to No.2 vertex.</param>
+        /// <param name="length">The dimension along lengthDirection.</param>
+        /// <param name="width">The dimension along widthDirection.</param>
+        public SquareMesh(UV location, UV lengthDirection, UV widthDirection, double length, double width)
+        {
+            Contract.Assert(null != location && null != lengthDirection && null != widthDirection && length > 0 && width > 0);
 
-        public XYZ GetVertex(int vertexNo)
+            vertex2DArray = new UV[Utility.MESHVERTEXNUMBER];
+
+            vertex2DArray[0] = new UV(location.U, location.V);
+            vertex2DArray[1] = new UV(location.U, location.V) + lengthDirection.Normalize() * length;
+            vertex2DArray[2] = new UV(vertex2DArray[1].U, vertex2DArray[1].V) + widthDirection.Normalize() * width;
+            vertex2DArray[3] = new UV(vertex2DArray[0].U, vertex2DArray[0].V) + widthDirection.Normalize() * width;
+        }
+
+        
+        public XYZ GetVertex3D(int vertexNo)
         {
             Contract.Assert(vertexNo > 0 && vertexNo < Utility.MESHVERTEXNUMBER);
-            return vertexArray[vertexNo];
+            if (null == vertex3DArray)
+                return null;
+
+            return vertex3DArray[vertexNo];
         }
+
+
+        public UV GetVertex2D(int vertexNo)
+        {
+            Contract.Assert(vertexNo > 0 && vertexNo < Utility.MESHVERTEXNUMBER);
+            if (null == vertex2DArray)
+                return null;
+
+            return vertex2DArray[vertexNo];
+        }
+
 
         /// <summary>
         /// The side length multiplies the width is the area.
         /// </summary>
         /// <returns></returns>
-        double IMeshProvider.GetArea()
+        double IMeshElement.GetArea()
         {
-            double length = vertexArray[0].DistanceTo(vertexArray[1]);
-            double width = vertexArray[1].DistanceTo(vertexArray[2]);
+            if(null == vertex3DArray && null == vertex2DArray)
+            {
+                return Utility.ZERO;
+            }
+            double length = Utility.ZERO;
+            double width = Utility.ZERO;
+            if(null != vertex3DArray && vertex3DArray.Length != 0)
+            {
+                length = vertex3DArray[0].DistanceTo(vertex3DArray[1]);
+                width = vertex3DArray[1].DistanceTo(vertex3DArray[2]);                
+            }
+            if(null != vertex2DArray && vertex3DArray.Length != 0)
+            {
+                length = vertex2DArray[0].DistanceTo(vertex2DArray[1]);
+                width = vertex2DArray[1].DistanceTo(vertex2DArray[2]);
+            }
 
             return length * width;
         }
 
         /// <summary>
-        /// Returning the clone of vertices prevents modification of original data since it's private. 
+        /// Returning the clone of 3D vertices prevents modification of original data since it's private. 
         /// </summary>
         /// <returns>Clone of vetices</returns>
-        XYZ[] IMeshProvider.GetVertices()
+        XYZ[] IMeshElement.GetVertices3D()
         {
-            return (XYZ[])vertexArray.Clone();
+            return (XYZ[])vertex3DArray.Clone();
+        }
+
+
+        /// <summary>
+        /// Return 2D vertices.
+        /// </summary>
+        /// <returns></returns>
+        UV[] IMeshElement.GetVertices2D()
+        {
+            return (UV[])vertex2DArray.Clone();
         }
     }
 }

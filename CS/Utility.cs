@@ -16,7 +16,8 @@ namespace ParameterUtils
     class Utility
     {
         public static double ZERO = 0.000000000000;
-
+        public static double MESHGAPCEIL = 0.5;
+        public static double MESHSIZECEIL = 0.5;
         /// <summary>
         /// The number of mesh vertex.
         /// </summary>
@@ -68,54 +69,38 @@ namespace ParameterUtils
             return null;
         }
 
-        public static List<List<Curve>> GetFaceCurves(Face face)
+        
+        /// <summary>
+        /// Get all 3D vertices for each edge loop of a face due to possible holes in this face.
+        /// </summary>
+        /// <param name="face"></param>
+        /// <returns></returns>
+        public static List<List<XYZ>> GetFaceVertex3D(Face face)
         {
             Contract.Requires(null != face);
             if (null == face)
                 return null;
 
-            // A face may have holes, therefore it has corresponding inner edge loops.
-            // Each loop and outer boundary need a seperate list to store curve information.
-            List<List<Curve>> curveLists = new List<List<Curve>>();
-            List<Curve> tempCurveList = new List<Curve>();
-
-            EdgeArrayArray edgeArrays = face.EdgeLoops;
-            Curve tempCurve = null;
-            foreach (EdgeArray edges in edgeArrays)
-            {
-                foreach (Edge edge in edges)
-                {
-                    tempCurve = edge.AsCurveFollowingFace(face);
-                    tempCurveList.Add(tempCurve);
-                }
-                curveLists.Add(tempCurveList);
-
-                // Allocate new memory for the next edge list.
-                tempCurveList = new List<Curve>();
-            }
-
-            return curveLists;
-        }
-
-        public static List<List<XYZ>> GetFaceVertex(Face face)
-        {
-            Contract.Requires(null != face);
-            if (null == face)
-                return null;
-
-            // All edges should be obtained first.
-            List<List<Curve>> curveLists = GetFaceCurves(face);
-            if (null == curveLists)
+            // All curves in sequence should be obtained first.
+            IList<CurveLoop> curveLoopList = face.GetEdgesAsCurveLoops();
+            if (null == curveLoopList || curveLoopList.Count == 0)
                 return null;
 
             List<List<XYZ>> vertexLists = new List<List<XYZ>>();
             List<XYZ> tempVertexList = new List<XYZ>();
-            foreach (List<Curve> curves in curveLists)
+            CurveLoopIterator curveIterator;
+            foreach (CurveLoop curves in curveLoopList)
             {
-                foreach (Curve curve in curves)
+                // Traverse the next curve loop if the current one is illegal. However, some routines in Revit may 
+                // set the CurveLoop to be marked "open" or "closed" in spite of the actual geometry of the curves.
+                // In these special cases, the CurveLoop class does not require that the CurveLoop is correctly marked. 
+                if (null == curves || curves.IsOpen())
+                    continue;
+
+                curveIterator = curves.GetCurveLoopIterator(); 
+                while (!curveIterator.MoveNext())
                 {
-                    tempVertexList.Add(curve.GetEndPoint(0));
-                    tempVertexList.Add(curve.GetEndPoint(1));
+                    tempVertexList.Add(curveIterator.Current.GetEndPoint(0));
                 }
                 vertexLists.Add(tempVertexList);
 
@@ -125,5 +110,37 @@ namespace ParameterUtils
 
             return vertexLists;
         }
+
+
+        /// <summary>
+        /// Get all 2D vertices for each edge loop of a face due to possible holes in this face.
+        /// </summary>
+        /// <param name="face"></param>
+        /// <returns></returns>
+        public static List<List<UV>> GetFaceVertex2D(Face face)
+        {
+            Contract.Requires(null != face);
+            if (null == face)
+                return null;
+
+            List<List<XYZ>> vertexLists3D = GetFaceVertex3D(face);
+            if (null == vertexLists3D || vertexLists3D.Count == 0)
+                return null;
+
+            List<List<UV>> vertexLists2D = new List<List<UV>>(vertexLists3D.Count);
+
+            foreach (List<XYZ> vertexList in vertexLists3D)
+            {
+                List<UV> tempUertexList = new List<UV>(vertexList.Count);
+                for (int i=0; i<vertexList.Count; i++)
+                {
+                    tempUertexList.Add(face.Project(vertexList[i]).UVPoint);
+                }
+                vertexLists2D.Add(tempUertexList);
+            }
+
+            return vertexLists2D;
+        }
+
     }
 }
