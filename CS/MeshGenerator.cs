@@ -131,7 +131,7 @@ namespace ParameterUtils
             }
             set
             {
-                if (value < Utility.MESHGAPCEIL)
+                if (value < Utility.MESHGAPFLOOR)
                     mGap = Utility.ZERO;
                 else
                     mGap = value;
@@ -237,7 +237,7 @@ namespace ParameterUtils
             if (null == rectangleArea || rectangleArea.Length == 0)
                 return false;
 
-            if (gap < Utility.MESHGAPCEIL)
+            if (gap < Utility.MESHGAPFLOOR)
                 return false;
 
             if (meshLength < Utility.MESHSIZECEIL || meshLength < Utility.MESHSIZECEIL)
@@ -259,7 +259,7 @@ namespace ParameterUtils
             if (null == rectangleArea || rectangleArea.Length == 0)
                 return false;
 
-            if (gap < Utility.MESHGAPCEIL)
+            if (gap < Utility.MESHGAPFLOOR)
                 return false;
 
             if (meshLength < Utility.MESHSIZECEIL || meshLength < Utility.MESHSIZECEIL)

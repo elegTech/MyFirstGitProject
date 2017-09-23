@@ -16,8 +16,12 @@ namespace ParameterUtils
     class Utility
     {
         public static double ZERO = 0.000000000000;
-        public static double MESHGAPCEIL = 0.5;
+        public static double MESHGAPFLOOR = 0.5;
         public static double MESHSIZECEIL = 0.5;
+
+        public static double THRESHHOLDVALUE = 0.1;
+
+
         /// <summary>
         /// The number of mesh vertex.
         /// </summary>
