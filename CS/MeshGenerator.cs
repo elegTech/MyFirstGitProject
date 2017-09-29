@@ -231,6 +231,18 @@ namespace ParameterUtils
             }
         }
 
+        public int MeshNumberInColumn
+        {
+            get { return meshNumberInColumn; }
+        }
+
+
+        public int MeshNumberInRow
+        {
+            get { return meshNumberInRow; }
+        }
+
+
         public bool ResetData3D(XYZ[] rectangleArea, double gap, double meshLength, double meshWidth)
         {
             Contract.Assert(null != rectangleArea && rectangleArea.Length == Utility.MESHVERTEXNUMBER);

@@ -54,9 +54,42 @@ namespace ParameterUtils
         /// </summary>
         private List<List<UV>> pointLists2D;
 
+
+        /// <summary>
+        /// 
+        /// </summary>
+        private struct PointListIndex
+        {
+            int curveIndexOfLoop;
+            int pointIndexOfCurve;
+
+            // Indicate whether the point is a vertex of this area or not.
+            bool isVertex;
+
+            public PointListIndex(int curveIndex, int pointIndex, bool isVertex)
+            {
+                this.curveIndexOfLoop = curveIndex;
+                this.pointIndexOfCurve = pointIndex;
+                this.isVertex = isVertex;
+            }
+        }
+
+
+        /// <summary>
+        /// It stores points lie in specific mesh using the row index and column index
+        /// of the pointLists2D. Namely, pointListInMesh[i][j] indicates the points in
+        /// the mesh at No.i row & No.j column. Each "PointIndex" stores the 2D indexs 
+        /// in pointLists2D/pointLists3D.
+        /// </summary> 
+        private List<List<List<PointListIndex>>> pointListInMesh;
+
         private SqureMeshGenerator mMeshGenerator;
 
+        /// <summary>
+        /// Gap of meshs paved on the face.
+        /// </summary>
         private double mGap;
+
 
         private double mMeshLength;
         private double mMeshWidth;
@@ -79,6 +112,8 @@ namespace ParameterUtils
         {
             mFace = face;
             GenerateBoundary();
+
+            Initialize();
         }
 
         public PolygonArea(Face face, double gap, double meshDimensionU, double meshDimensionV)
@@ -87,7 +122,7 @@ namespace ParameterUtils
             mGap = gap;
             mMeshLength = meshDimensionU;
             mMeshWidth = meshDimensionV;
-            GenerateBoundary();
+
         }
 
         public Face Face
@@ -149,9 +184,9 @@ namespace ParameterUtils
 
         public XYZ[] BoundaryRectangle3D
         {
-            get 
+            get
             {
-                return mBoundaryRectangle3D; 
+                return mBoundaryRectangle3D;
             }
         }
 
@@ -181,16 +216,38 @@ namespace ParameterUtils
 
         public SqureMeshGenerator MeshGenerator
         {
-            get 
+            get
             {
                 return mMeshGenerator;
             }
 
-            set 
+            set
             {
                 if (null != value)
                     mMeshGenerator = value;
             }
+        }
+
+        private void Initialize()
+        {
+            // Return when the boundary is inaccessable.
+            if (!GenerateBoundary())
+                return;
+
+            mMeshGenerator = new SqureMeshGenerator(mBoundaryRectangle2D, mGap, mMeshLength, mMeshWidth);
+
+            pointListInMesh = new List<List<List<PointListIndex>>>();
+
+            // Initialize the pointListInMesh according to the row number and column number of 2D mesh arrays.
+            for(int i=0; i< mMeshGenerator.MeshNumberInRow; i++)
+            {
+                pointListInMesh.Add(new List<List<PointListIndex>>());
+                for(int j=0; j<mMeshGenerator.MeshNumberInColumn; j++)
+                {
+                    pointListInMesh[i].Add(new List<PointListIndex>());
+                }
+            }
+                
         }
 
         private bool GetEdgeVertex3D()
@@ -279,22 +336,142 @@ namespace ParameterUtils
             return true;
         }
 
+
+        /// <summary>
+        /// It first get the lines lie in the interval of the start point and end point along U direction.
+        /// And then find the intersection points.
+        /// </summary>
+        /// <param name="startPoint"></param>
+        /// <param name="endPoint"></param>
+        /// <param name="columnIndexStart"></param>
+        /// <param name="columnIndexEnd"></param>
+        private List<Point2D> GetIntersectPointListWithColumnLines(UV startPoint, UV endPoint)
+        {
+            if (null == startPoint || null == endPoint || startPoint == endPoint)
+                return null;
+
+            // No processing is needed when they are Coincident points.
+            if ((startPoint - endPoint).IsZeroLength())
+                return null;
+
+            double uMin = Math.Min(startPoint.U, endPoint.U);
+            double uMax = Math.Max(startPoint.U, endPoint.U);
+
+            List<Line2D> lineListColumn2D = new List<Line2D>(mMeshGenerator.LineArrayInColumn2D);
+
+            // Find the first index of the line that lies in the right of the start point.
+            int columnIndexStart = lineListColumn2D.FindIndex(
+                    delegate (Line2D line)
+                    {
+                        return line.StartPoint.X > uMin;
+                    }
+                );
+
+            // Find the first index of the line that lies in the left of the end point.
+            // The end index should not be found in the way shown above.
+            int columnIndexEnd = lineListColumn2D.FindLastIndex(
+                    delegate (Line2D line)
+                    {
+                        return line.EndPoint.X < uMax;
+                    }
+                );
+
+            List<Point2D> intersectPointList = new List<Point2D>();
+            Line2D tempLine = new Line2D(new Point2D(startPoint.U, startPoint.V), new Point2D(endPoint.U, endPoint.V));
+            Point2D? intersectPoint;
+            for(int i=columnIndexStart; i<columnIndexEnd; i++)
+            {
+                intersectPoint = lineListColumn2D[i].IntersectWith(tempLine);
+                Contract.Assert(intersectPoint.HasValue);
+                intersectPointList.Add(intersectPoint.Value);
+            }
+
+            return intersectPointList;
+        }
+
+
+        /// <summary>
+        /// It first get the lines lie in the interval of the start point and end point along V direction.
+        /// And then find the intersection points.
+        /// </summary>
+        /// <param name="startPoint"></param>
+        /// <param name="endPoint"></param>
+        /// <param name="columnIndexStart"></param>
+        /// <param name="columnIndexEnd"></param>
+        private List<Point2D> GetIntersectPointListWithRowLines(UV startPoint, UV endPoint)
+        {
+            if (null == startPoint || null == endPoint || startPoint == endPoint)
+                return null;
+
+            // No processing is needed when they are Coincident points.
+            if ((startPoint - endPoint).IsZeroLength())
+                return null;
+
+            double vMin = Math.Min(startPoint.V, endPoint.V);
+            double vMax = Math.Max(startPoint.V, endPoint.V);
+
+            List<Line2D> lineListRow2D = new List<Line2D>(mMeshGenerator.LineArrayInRow2D);
+
+            // Find the first index of the line above the start point.
+            int rowIndexStart = lineListRow2D.FindIndex(
+                    delegate (Line2D line)
+                    {
+                        return line.StartPoint.Y > vMin;
+                    }
+                );
+
+            // Find the last index of the line below the end point.
+            // The end index should not be found in the way shown above.
+            int rowIndexEnd = lineListRow2D.FindLastIndex(
+                    delegate (Line2D line)
+                    {
+                        return line.EndPoint.Y < vMax;
+                    }
+                );
+
+            List<Point2D> intersectPointList = new List<Point2D>();
+            Line2D tempLine = new Line2D(new Point2D(startPoint.U, startPoint.V), new Point2D(endPoint.U, endPoint.V));
+            Point2D? intersectPoint;
+            for (int i = rowIndexStart; i < rowIndexEnd; i++)
+            {
+                intersectPoint = lineListRow2D[i].IntersectWith(tempLine);
+                Contract.Assert(intersectPoint.HasValue);
+                intersectPointList.Add(intersectPoint.Value);
+            }
+
+            return intersectPointList;
+        }
+
+
         /// <summary>
         /// Calculate the intersect points with mesh lines for the line defined by given points.
         /// </summary>
-        /// <param name="startPoint">The start point of a curve along the topological direction.</param>
-        /// <param name="endPoint">The end point of a curve along the topological direction.</param>
+        /// <param name="startPointCurveIndex">The curve index of start point of a curve along the topological direction.</param>
+        /// <param name="startPointVertexIndex">The vertex index of start point of a curve along the topological direction.</param>
+        /// <param name="endPointRowIndex">The curve index of the end point of a curve along the topological direction.</param>
+        /// <param name="endPointColumnIndex">The vertex index of the end point of a curve along the topological direction.</param>
         /// <returns></returns>
-        private List<Point2D> IntersectWithMeshLines(UV startPoint, UV endPoint)
+        private List<Point2D> IntersectWithMeshLines(int startPointCurveIndex, int startPointVertexIndex, int endPointCurveIndex, int endPointVertexIndex)
         {
-            if (null == startPoint || null == endPoint)
+
+            // Exclude illegal inputs first.
+            if (startPointCurveIndex < 0 || startPointCurveIndex >= vertexLists2D.Count)
                 return null;
 
-            // Both are the same point.
-            if (startPoint.Equals(endPoint))
+            if (endPointCurveIndex < 0 || endPointCurveIndex >= vertexLists2D.Count)
                 return null;
 
-            List<Point2D> intersectPointList = new List<Point2D>;
+            if (startPointVertexIndex <0 || startPointVertexIndex >= vertexLists2D[startPointCurveIndex].Count)
+                return null;
+
+            if (endPointVertexIndex < 0 || endPointVertexIndex >= vertexLists2D[endPointCurveIndex].Count)
+                return null;
+            
+            // Both are the same point in this case.
+            if (startPointCurveIndex==endPointCurveIndex && startPointVertexIndex==endPointVertexIndex)
+                return null;
+            
+            List<Point2D> intersectPointList = new List<Point2D>();
 
             int roughMeshColumnNo = -1;
             int roughMeshRowNo = -1;
@@ -304,40 +481,29 @@ namespace ParameterUtils
             // Record the start index and end index of column lines that have 
             // intersections points with given edge defined by the start point
             // and end point above.
-            int columnIndexStart, columnIndexEnd;
-            int rowIndexStart, rowIndexEnd;
+            int columnIndexStart = -1;
+            int columnIndexEnd = -1;
+            int rowIndexStart = -1;
+            int rowIndexEnd = -1;
+
+            UV startPoint = vertexLists2D[startPointCurveIndex][startPointVertexIndex];
+            UV endPoint = vertexLists2D[endPointCurveIndex][endPointVertexIndex];
 
             CalculateMeshNo(startPoint, ref roughMeshColumnNo, ref roughMeshRowNo,
                                ref isInColumnGap, ref isInRowGap);
 
-            // Determine the first column line that will intersect with the line startPoint->endPoint.
-            if (isInColumnGap)
-                columnIndexStart = roughMeshColumnNo * 2 + 2;
-            else
-                columnIndexStart = roughMeshColumnNo * 2 + 1;
-
-            // Determine the first row line that will intersect with the line startPoint->endPoint.
-            if (isInRowGap)
-                rowIndexStart = roughMeshRowNo * 2 + 2;
-            else
-                rowIndexStart = roughMeshRowNo * 2 + 1;
+            // If the start point lies neither in row gap nor in column gap, it means that
+            // the start point lies in the mesh at specific row and column. Otherwise, the
+            // point lies in a gap. Note that a point in gap.
+            if (!isInColumnGap && !isInRowGap)
+            {
+                pointListInMesh[roughMeshRowNo][roughMeshColumnNo].Add(new PointListIndex(startPointCurveIndex, startPointVertexIndex, true));
+            }
 
 
-            CalculateMeshNo(endPoint, ref roughMeshColumnNo, ref roughMeshRowNo,
-                                ref isInColumnGap, ref isInRowGap);
 
-            // Determine the end column line that will intersect with the line startPoint->endPoint.
-            // Please take care of the index calculation which is different to that of start point.
-            if (isInColumnGap)
-                columnIndexEnd = roughMeshColumnNo * 2 + 1;
-            else
-                columnIndexEnd = roughMeshColumnNo * 2;
 
-            // Determine the end row line that will intersect with the line startPoint->endPoint.
-            if (isInRowGap)
-                rowIndexEnd = roughMeshRowNo * 2 + 1;
-            else
-                rowIndexEnd = roughMeshRowNo * 2;
+
 
 
 
@@ -352,22 +518,18 @@ namespace ParameterUtils
    
 
         /// <summary>
-        /// Insert the point into the point list based on the distance to the point 
-        /// list's first item. The items in point list are sorted,  from lowest to highest.  
+        /// Resort the input point lists  point through distance to the given start point. 
         /// </summary>
         /// <param name="pointList">Point list consists of sequential points with ascending distance to the first item.</param>
         /// <param name="point">Point that will be inserted.</param>
-        private void InsertPointBasedOnDistance(List<Point2D> pointList, Point2D point)
+        private List<Point2D> InsertPointBasedOnDistance(List<Point2D> pointListColumn, List<Point2D> pointListRow, Point2D startPoint)
         {
-            if (null == pointList)
-                return;
+            if (null == pointListColumn || null == pointListRow || pointListColumn.Count == 0 || pointListRow.Count == 0)
+                return null;
 
-            // Direct add the point if there is only one or no point in the list.
-            if (pointList.Count <= 1)
-            {
-                pointList.Add(point);
-                return;
-            }
+
+
+
 
             int index = pointList.Count / 2;
             double distance = point.DistanceTo(pointList[0]);
@@ -385,6 +547,7 @@ namespace ParameterUtils
 
             }
 
+            return;
 
         }
 
@@ -413,117 +576,25 @@ namespace ParameterUtils
                 return false;
 
             pointLists2D = new List<List<UV>>();
-            
 
-            int roughMeshColumnNo = -1;
-            int roughMeshRowNo = -1;
-            bool isInColumnGap = false;
-            bool isInRowGap = false;
-
-            // Used to indicate a edge of the area
             UV startPoint, endPoint;
-
-            Point2D? intersectPoint;
-
-            // Record the start index and end index of column lines that have 
-            // intersections points with given edge defined by the start point
-            // and end point above.
-            int columnIndexStart, columnIndexEnd;
-            int rowIndexStart, rowIndexEnd;
             
             // Store all intersection points of area edges and mesh lines.
-            List<Point2D> intersectPoints = new List<Point2D>();
+            List<Point2D> intersectPointListRow;
+            List<Point2D> intersectPointListColumn;
 
-            Line2D edgeLine;
             // Traverse each curve loop's vertices.
             for (int i=0; i<vertexLists2D.Count; i++)
             {
                 pointLists2D[i] = new List<UV>();
                 for (int j=0; j<vertexLists2D[i].Count; j++)
                 {
+                    // An edge defined by two points.
                     startPoint = vertexLists2D[i][j];
                     endPoint = vertexLists2D[i][j+1];
 
-
-
-                    CalculateMeshNo(startPoint, ref roughMeshColumnNo, ref roughMeshRowNo,
-                                                   ref isInColumnGap, ref isInRowGap);
-
-                    // Determine the first column line that will intersect with the line startPoint->endPoint.
-                    if (isInColumnGap)
-                        columnIndexStart = roughMeshColumnNo * 2 + 2;
-                    else
-                        columnIndexStart = roughMeshColumnNo * 2 + 1;
-
-                    // Determine the first row line that will intersect with the line startPoint->endPoint.
-                    if (isInRowGap)
-                        rowIndexStart = roughMeshRowNo * 2 + 2;
-                    else
-                        rowIndexStart = roughMeshRowNo * 2 + 1;
-
-
-                    CalculateMeshNo(endPoint, ref roughMeshColumnNo, ref roughMeshRowNo,
-                               ref isInColumnGap, ref isInRowGap);
-
-                    // Determine the end column line that will intersect with the line startPoint->endPoint.
-                    // Please take care of the index calculation which is different to that of start point.
-                    if (isInColumnGap)
-                        columnIndexEnd = roughMeshColumnNo * 2 + 1;
-                    else
-                        columnIndexEnd = roughMeshColumnNo * 2;
-
-                    // Determine the end row line that will intersect with the line startPoint->endPoint.
-                    if (isInRowGap)
-                        rowIndexEnd = roughMeshRowNo * 2 + 1;
-                    else
-                        rowIndexEnd = roughMeshRowNo * 2;
-
-                    // Get the lower 
-                    int indexLower = Math.Min(columnIndexStart, columnIndexEnd);
-                    int indexHigher = Math.Max(columnIndexStart, columnIndexEnd);
-
-
-
-                    edgeLine = new Line2D(new Point2D(startPoint.U, startPoint.V), new Point2D(endPoint.U, endPoint.V));
-
-                    pointLists2D[i].Add(startPoint);
-                    // If the start point is on the first mesh line, there is no need to calculate for the first mesh line.    
-                    if (Math.Abs(startPoint.U - mMeshGenerator.LineArrayInColumn2D[columnIndexStart].StartPoint.X) < Utility.THRESHHOLDVALUE)
-                    {
-                        columnIndexStart++;
-                    }
-
-
-
-                    for (int k = indexLower; k <= indexHigher; k++)
-                    {
-                        intersectPoint = mMeshGenerator.LineArrayInColumn2D[k].IntersectWith(edgeLine);
-                        // This intersection point should not be null;
-                        Contract.Assert(null != intersectPoint);
-
-                        // The intersection point is naturally added in sequence based on distance to the start point.
-                        intersectPoints.Add((Point2D) intersectPoint);
-                    }
-
-                    // If the start point is on the first mesh line, there is no need to calculate for the first mesh line.    
-                    if (Math.Abs(startPoint.V - mMeshGenerator.LineArrayInRow2D[rowIndexStart].StartPoint.X) < Utility.THRESHHOLDVALUE)
-                    {
-                        rowIndexStart++;
-                    }
-
-                    for (int k = rowIndexStart; k <= rowIndexEnd; k++)
-                    {
-                        intersectPoint = mMeshGenerator.LineArrayInRow2D[k].IntersectWith(edgeLine);
-                        // This intersection point should not be null;
-                        Contract.Assert(null != intersectPoint);
-
-
-                        intersectPoints.Add((Point2D)intersectPoint);
-                    }
-
-
-
-
+                    intersectPointListRow = GetIntersectPointListWithRowLines(startPoint, endPoint);
+                    intersectPointListColumn = GetIntersectPointListWithColumnLines(startPoint, endPoint);
 
                 }
             }
