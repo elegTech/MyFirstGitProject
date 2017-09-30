@@ -91,7 +91,7 @@ namespace ParameterUtils
                 return null;
 
             List<List<XYZ>> vertexLists = new List<List<XYZ>>();
-            List<XYZ> tempVertexList = new List<XYZ>();
+            List<XYZ> tempVertexList;
             CurveLoopIterator curveIterator;
             foreach (CurveLoop curves in curveLoopList)
             {
@@ -101,15 +101,15 @@ namespace ParameterUtils
                 if (null == curves || curves.IsOpen())
                     continue;
 
+                // Allocate new memory for the vertex list.
+                tempVertexList = new List<XYZ>();
+
                 curveIterator = curves.GetCurveLoopIterator(); 
                 while (!curveIterator.MoveNext())
                 {
                     tempVertexList.Add(curveIterator.Current.GetEndPoint(0));
                 }
                 vertexLists.Add(tempVertexList);
-
-                // Allocate new memory for the next vertex list.
-                tempVertexList = new List<XYZ>();
             }
 
             return vertexLists;
