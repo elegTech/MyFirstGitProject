@@ -180,9 +180,6 @@ namespace ParameterUtils
         {
             get
             {
-                if (null == mMeshArrays)
-                    GenerateMesh();
-
                 return mMeshArrays;
             }
         }
@@ -254,7 +251,6 @@ namespace ParameterUtils
 
             if (meshLength < Utility.MESHSIZECEIL || meshLength < Utility.MESHSIZECEIL)
                 return false;
-
 
             rectangleArea.CopyTo(mRectangleArea3D, 0);
             mMeshLength = meshLength;
@@ -411,7 +407,7 @@ namespace ParameterUtils
         /// on rectangle area boundaries. Each line is parallel to length or width boundaries.
         /// </summary>
         /// <returns></returns>
-        private bool GenerateMeshLines()
+        public bool GenerateMeshLines()
         {
             // If it's not ready, generate the meshes first.
             if (!CanGenerateMeshLines())

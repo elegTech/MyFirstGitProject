@@ -52,6 +52,12 @@ namespace ParameterUtils
                 }
                 else
                 {
+                    if (x == y)
+                        return 0;
+
+                    if (x.IsAlmostEqualTo(y, Utility.THRESHHOLDVALUE))
+                        return 0;
+
                     if (x.DistanceTo(basePoint) < y.DistanceTo(basePoint))
                     {
                         return -1;
@@ -78,24 +84,11 @@ namespace ParameterUtils
         /// </summary>
         private Face mFace;
 
-        /// <summary>
-        /// Get the face curves vertices. Note that a face can have multiple
-        /// edge loops when there is a hole in this face. Hence the 
-        /// vertices are stored for individual edge. 
-        /// </summary>
-        private List<List<XYZ>> vertexLists3D;
-
 
         /// <summary>
         /// Face curves vertices defined using 2D points.
         /// </summary>
         private List<List<UV>> vertexLists2D;
-
-        /// <summary>
-        /// In addition to all vertices in vertexLists, it includes 
-        /// intersection points of the area boundaries and meshes.
-        /// </summary>
-        private List<List<XYZ>> pointLists3D;
 
 
         /// <summary>
@@ -106,32 +99,51 @@ namespace ParameterUtils
 
 
         /// <summary>
-        /// 
+        /// Record 2D index of the point in pointLists2D.
         /// </summary>
-        private struct PointListIndex
+        public struct PointListIndex
         {
-            int curveIndexOfLoop;
-            int pointIndexOfCurve;
-
+            // They are indexes of the point in pointLists2D.
+            int curveIndexOfLoop, pointIndexOfCurve;
+            
             // Indicate whether the point is a vertex of this area or not.
-            bool isVertex;
+            bool isAreaVertex;
 
-            public PointListIndex(int curveIndex, int pointIndex, bool isVertex)
+            public int CurveIndex
+            {
+                get { return curveIndexOfLoop; }
+            }
+
+            public int PointIndex
+            {
+                get { return pointIndexOfCurve; }
+            }
+
+
+            public PointListIndex(int curveIndex, int pointIndex, bool isVertex = false)
             {
                 this.curveIndexOfLoop = curveIndex;
                 this.pointIndexOfCurve = pointIndex;
-                this.isVertex = isVertex;
+                this.isAreaVertex = isVertex;
             }
         }
 
 
         /// <summary>
-        /// It stores points lie in specific mesh using the row index and column index
-        /// of the pointLists2D. Namely, pointListInMesh[i][j] indicates the points in
-        /// the mesh at No.i row & No.j column. Each "PointIndex" stores the 2D indexs 
-        /// in pointLists2D/pointLists3D.
+        /// It stores the points lie in specific mesh using the row index and column index
+        /// of the pointLists2D. Namely, pointListInMesh[i][j] indicates the points on 
+        /// area curves in the mesh at No.i row & No.j column. Each "PointIndex" stores 
+        /// the 2D indexs in pointLists2D/pointLists3D.
         /// </summary> 
         private List<List<List<PointListIndex>>> pointListInMesh;
+
+
+        /// <summary>
+        /// Store the mesh vertices that lie in area, and the intersection points
+        /// on four mesh sides (Note: not in the mesh).
+        /// </summary>
+        private List<List<List<UV>>> meshPointList;
+
 
         private SqureMeshGenerator mMeshGenerator;
 
@@ -146,25 +158,9 @@ namespace ParameterUtils
 
 
         /// <summary>
-        /// The boundary of the polygon area, represented by four vertices in counter-clockwise sequence.
-        /// The first vertex is the bottom left one, codes as No.0. 
-        /// </summary>
-        private XYZ[] mBoundaryRectangle3D;
-
-
-        /// <summary>
         /// Boundary rectangle defined using 2D points.
         /// </summary>
         private UV[] mBoundaryRectangle2D;
-
-
-        public PolygonArea(Face face)
-        {
-            mFace = face;
-            GenerateBoundary();
-
-            Initialize();
-        }
 
         public PolygonArea(Face face, double gap, double meshDimensionU, double meshDimensionV)
         {
@@ -172,7 +168,7 @@ namespace ParameterUtils
             mGap = gap;
             mMeshLength = meshDimensionU;
             mMeshWidth = meshDimensionV;
-
+            Initialize();
         }
 
         public Face Face
@@ -203,7 +199,6 @@ namespace ParameterUtils
             }
         }
 
-
         public double MeshLength
         {
             get
@@ -232,27 +227,11 @@ namespace ParameterUtils
             }
         }
 
-        public XYZ[] BoundaryRectangle3D
-        {
-            get
-            {
-                return mBoundaryRectangle3D;
-            }
-        }
-
         public UV[] BoundaryRectangle2D
         {
             get
             {
                 return mBoundaryRectangle2D;
-            }
-        }
-
-        public List<List<XYZ>> VertexLists3D
-        {
-            get
-            {
-                return vertexLists3D;
             }
         }
 
@@ -278,6 +257,23 @@ namespace ParameterUtils
             }
         }
 
+
+        public List<List<List<PointListIndex>>> AreaPointListInMesh
+        {
+            get
+            {
+                return pointListInMesh;
+            }
+        }
+
+        public List<List<List<UV>>> MeshPointList
+        {
+            get
+            {
+                return meshPointList;
+            }
+        }
+
         private void Initialize()
         {
             // Return when the boundary is inaccessable.
@@ -285,32 +281,24 @@ namespace ParameterUtils
                 return;
 
             mMeshGenerator = new SqureMeshGenerator(mBoundaryRectangle2D, mGap, mMeshLength, mMeshWidth);
+            mMeshGenerator.GenerateMeshLines();
 
             pointListInMesh = new List<List<List<PointListIndex>>>();
+            meshPointList = new List<List<List<UV>>>();
 
             // Initialize the pointListInMesh according to the row number and column number of 2D mesh arrays.
-            for(int i=0; i< mMeshGenerator.MeshNumberInRow; i++)
+            for (int i=0; i< mMeshGenerator.MeshNumberInRow; i++)
             {
                 pointListInMesh.Add(new List<List<PointListIndex>>());
-                for(int j=0; j<mMeshGenerator.MeshNumberInColumn; j++)
+                meshPointList.Add(new List<List<UV>>());
+                for (int j=0; j<mMeshGenerator.MeshNumberInColumn; j++)
                 {
                     pointListInMesh[i].Add(new List<PointListIndex>());
+                    meshPointList[i].Add(new List<UV>());
                 }
             }
-                
-        }
 
-        private bool GetEdgeVertex3D()
-        {
-            Contract.Assert(null != mFace);
-            if (null == mFace)
-                return false;
-
-            vertexLists3D = Utility.GetFaceVertex3D(mFace);
-            if (null == vertexLists3D || vertexLists3D.Count == 0)
-                return false;
-
-            return true;
+            GetEdgeVertex2D();
         }
 
 
@@ -321,7 +309,7 @@ namespace ParameterUtils
                 return false;
 
             vertexLists2D = Utility.GetFaceVertex2D(mFace);
-            if (null == vertexLists3D || vertexLists3D.Count == 0)
+            if (null == vertexLists2D || vertexLists2D.Count == 0)
                 return false;
 
             return true;
@@ -338,13 +326,137 @@ namespace ParameterUtils
 
             BoundingBoxUV boundary = mFace.GetBoundingBox();
 
-            mBoundaryRectangle3D = new XYZ[2];
-            mBoundaryRectangle3D[0] = mFace.Evaluate(boundary.Min);
-            mBoundaryRectangle3D[1] = mFace.Evaluate(boundary.Max);
-
             mBoundaryRectangle2D = new UV[2];
             mBoundaryRectangle2D[0] = boundary.Min;
             mBoundaryRectangle2D[1] = boundary.Max;
+
+            return true;
+        }
+
+
+        /// <summary>
+        /// If the point is on mesh sides, return the side index. Otherwise, return -1.
+        /// Note that the side index indicates that the edge's start point is No.index vertex.
+        /// </summary>
+        /// <param name="point"></param>
+        /// <param name="mesh"></param>
+        /// <returns></returns>
+        public int GetMeshSideThroughPoint(UV point, IMeshElement mesh, ref bool isCoincidentWithMeshVertex)
+        {
+            if (null == point || null == mesh)
+                return -1;
+
+            UV[] vertexList = mesh.GetVertices2D();
+            int vertexCount = vertexList.Length;
+            Line2D line;
+            Point2D startPoint, endPoint;
+            Point2D tempPoint = new Point2D(point.U, point.V);
+            List<int> pointList = new List<int>();
+            isCoincidentWithMeshVertex = false;
+
+            for (int i=0; i<vertexCount;i++)
+            {
+                if (point == vertexList[i] || point.DistanceTo(vertexList[i]) < Utility.THRESHHOLDVALUE)
+                {
+                    isCoincidentWithMeshVertex = true;
+                    return -1;
+                }
+
+                startPoint = new Point2D(vertexList[i].U, vertexList[i].V);
+
+                // Avoid overstepping of array boundary.
+                endPoint = new Point2D(vertexList[(i+1) % vertexCount].U, vertexList[(i+1) % vertexCount].V);
+
+                line = new Line2D(startPoint, endPoint);
+
+                if (line.ClosestPointTo(tempPoint, true).DistanceTo(tempPoint) < Utility.THRESHHOLDVALUE)
+                {
+                    return i;
+                }
+            }
+
+            return -1;
+        }
+
+        
+        /// <summary>
+        /// Sort the vertices and intersection points that lie in mesh sides
+        /// in order to make them in counter-clock direction.
+        /// </summary>
+        /// <returns></returns>
+        private bool GenerateMeshPointListInArea()
+        {
+            if (null == mFace || null == mMeshGenerator)
+                return false;
+
+            UV point = null;
+            bool isCoincidentWithVertex = false;
+            int sideIndex = -1;
+
+            // Use to store points on each mesh edge. No.i vertex belongs to
+            // No.i edge.   
+            List<List<UV>> pointLists = new List<List<UV>>(Utility.MESHVERTEXNUMBER); 
+            for(int i=0; i<Utility.MESHVERTEXNUMBER; i++)
+            {
+                pointLists.Add(new List<UV>());
+            }
+
+
+            for (int i=0; i<mMeshGenerator.MeshNumberInRow; i++)
+            {
+                for(int j=0; j< mMeshGenerator.MeshNumberInColumn; j++)
+                {      
+                    
+                    // Add four vertices of mesh into the point list first.
+                    for (int k = 0; k < Utility.MESHVERTEXNUMBER; k++)
+                    {
+                        pointLists[k].Add(mMeshGenerator.MeshArrays[i, j].GetVertex2D(k));
+                    }
+
+                    foreach (PointListIndex pointIndex in pointListInMesh[i][j])
+                    {
+                        point = pointLists2D[pointIndex.CurveIndex][pointIndex.PointIndex];
+                        sideIndex = GetMeshSideThroughPoint(point, mMeshGenerator.MeshArrays[i, j], ref isCoincidentWithVertex);
+                        
+                        // Ignore the vertex point.
+                        if (isCoincidentWithVertex)
+                        {
+                            continue;
+                        }
+
+                        // Add intersection point without considering the sequence.
+                        // Namely, points on each side maybe unordered.
+                        if (sideIndex >= 0 && sideIndex <= Utility.MESHVERTEXNUMBER)
+                        {
+                            pointLists[sideIndex].Add(point);
+                        }
+                    }
+
+                    // Sort the items in point list based on the distance to the first point.
+                    for (int k = 0; k < pointLists.Count; k++)
+                    {
+                        pointLists[k].Sort(delegate (UV x, UV y)
+                        {
+                            if (null == x && null == y) return 0;
+                            else if (null == x) return -1;
+                            else if (null == y) return 1;
+
+                            if ((x - pointLists[k][0]).GetLength() > (y - pointLists[k][0]).GetLength())
+                                return 1;
+                            else
+                                return -1;
+                        });
+
+                        meshPointList[i][j].AddRange(pointLists[k]);
+                    }
+
+                    // Add four vertices of mesh into the point list first.
+                    for (int k = 0; k < Utility.MESHVERTEXNUMBER; k++)
+                    {
+                        pointLists[k].Clear();
+                    }
+                }
+            }
 
             return true;
         }
@@ -363,6 +475,9 @@ namespace ParameterUtils
             if (null == point2D)
                 return false;
 
+            if (null == mMeshGenerator)
+                return false;
+
             // The distance between the point and the minimum coordinates of boundingBox along length direction.
             double distanceAlongLengthDirection = point2D.U - mBoundaryRectangle2D[0].U;
 
@@ -378,10 +493,12 @@ namespace ParameterUtils
             // Check the U (i.e., X) coordinate value is greater than that of the mesh's right line, 
             // if so, the point lies in the gap, otherwise, it lies in the mesh.  
             if(point2D.U > mMeshGenerator.LineArrayInColumn2D[roughMeshColumnNo*2+1].StartPoint.X)
-                isInColumnGap = true;
+                if(Math.Abs(point2D.U - mMeshGenerator.LineArrayInColumn2D[roughMeshColumnNo * 2 + 1].StartPoint.X) > Utility.THRESHHOLDVALUE)
+                    isInColumnGap = true;
 
             if (point2D.V > mMeshGenerator.LineArrayInRow2D[roughMeshRowNo*2+1].StartPoint.Y)
-                isInRowGap = true;
+                if (Math.Abs(point2D.V - mMeshGenerator.LineArrayInRow2D[roughMeshRowNo * 2 + 1].StartPoint.Y) > Utility.THRESHHOLDVALUE)
+                    isInRowGap = true;
 
             return true;
         }
@@ -429,7 +546,7 @@ namespace ParameterUtils
             List<UV> intersectPointList = new List<UV>();
             Line2D tempLine = new Line2D(new Point2D(startPoint.U, startPoint.V), new Point2D(endPoint.U, endPoint.V));
             Point2D? intersectPoint;
-            for(int i=columnIndexStart; i<columnIndexEnd; i++)
+            for(int i=columnIndexStart; i<=columnIndexEnd; i++)
             {
                 intersectPoint = lineListColumn2D[i].IntersectWith(tempLine);
                 Contract.Assert(intersectPoint.HasValue);
@@ -493,7 +610,7 @@ namespace ParameterUtils
             List<UV> intersectPointList = new List<UV>();
             Line2D tempLine = new Line2D(new Point2D(startPoint.U, startPoint.V), new Point2D(endPoint.U, endPoint.V));
             Point2D? intersectPoint;
-            for (int i = rowIndexStart; i < rowIndexEnd; i++)
+            for (int i = rowIndexStart; i <= rowIndexEnd; i++)
             {
                 intersectPoint = lineListRow2D[i].IntersectWith(tempLine);
                 Contract.Assert(intersectPoint.HasValue);
@@ -515,7 +632,7 @@ namespace ParameterUtils
         }
 
         /// <summary>
-        /// Use binary search method to find the target point. In this context, the 
+        /// Use binary search method to find the target point.
         /// </summary>
         /// <param name="pointList"></param>
         /// <param name="point"></param>
@@ -529,7 +646,11 @@ namespace ParameterUtils
             // complement of the index of the next element that is larger than the point.
             int index = pointList.BinarySearch(point, comparer);
 
-            if(index < 0)
+            // If the same value is found, avoid insertion since this point already exists in the point list.
+            if (index >= 0 && index <= pointList.Count)
+                return;
+
+            if (index < 0)
             {
                 pointList.Insert(~index, point);
             }
@@ -572,17 +693,6 @@ namespace ParameterUtils
             return pointListWithLongerLength;
         }
 
-        
-        /// <summary>
-        /// It hides internal logic to make the object easy to use.
-        /// </summary>
-        /// <returns></returns>
-        public bool PrepareAreaBoundaryVertex()
-        {
-            return GetEdgeVertex3D();
-        }
-
-
 
         /// <summary>
         /// Calculate all intersection points between area boundaries
@@ -590,12 +700,8 @@ namespace ParameterUtils
         /// </summary>
         /// <param name="meshArrays"></param>
         /// <returns></returns>
-        public bool CalculateInsectionPoints(SquareMesh[,] meshArrays)
+        public bool CalculateInsectionPoints()
         {
-            Contract.Assert(null != meshArrays && meshArrays.Length > 0);
-            if (null == meshArrays || meshArrays.Length == 0)
-                return false;
-
             pointLists2D = new List<List<UV>>();
 
             UV startPoint, endPoint;
@@ -605,7 +711,7 @@ namespace ParameterUtils
             List<UV> intersectPointListColumn;
             List<UV> intersectPointList;
 
-            // Traverse each curve loop's vertices along topological sequence.
+            // Traverse each curve loop's vertices along topological direction.
             for (int i=0; i<vertexLists2D.Count; i++)
             {
                 pointLists2D[i] = new List<UV>();
@@ -635,62 +741,60 @@ namespace ParameterUtils
         }
 
         // For each mesh, get the points lie in the mesh. Actually, it's easy to get such information for 
-        // intersection points when calculating them in "GetIntersectPointListWithRowLines". However, we 
-        // regenerate it here straightly for easy understanding, ignoring the efficiency. Additionally,
+        // intersection points when calculats them in "GetIntersectPointListWithRowLines". However, we 
+        // regenerate it here straightly for easy understanding, temporarily ignoring the efficiency. Additionally,
         // the rule for calculating which mesh the point lies in varies when there's no gap between two meshes.  
-        public bool GenerateMeshNo()
+        public bool GeneratePointListInMesh()
         {
             if (null == pointLists2D || pointLists2D.Count == 0)
                 return false;
-
-            if (null == mMeshGenerator)
-                ConfigureMeshGenerator();
 
             int roughMeshColumnNo = -1;
             int roughMeshRowNo = -1;
             bool isInColumnGap = false;
             bool isInRowGap = false;
 
-            foreach (List<UV> pointList in pointLists2D)
+            for (int i=0; i<pointLists2D.Count; i++)
             {
-                foreach (UV point in pointList)
+                for (int j=0; j< pointLists2D[i].Count; j++)
                 {
-                    if (!CalculateMeshNo(point, ref roughMeshColumnNo, ref roughMeshRowNo, ref isInColumnGap, ref isInRowGap))
+                    if (!CalculateMeshNo(pointLists2D[i][j], ref roughMeshColumnNo, 
+                            ref roughMeshRowNo, ref isInColumnGap, ref isInRowGap))
                         continue;
 
-                    if(!isInColumnGap && isInRowGap)
+                    // If a vertex lies in gap, this vertex will be out of consideration.
+                    if(!isInColumnGap && !isInRowGap)
                     {
-
+                        pointListInMesh[roughMeshRowNo][roughMeshColumnNo].Add(new PointListIndex(i,j));
                     }
                 }
-      
             }
-
-
-
-            for(int i=0; i< mMeshGenerator.MeshNumberInRow; i++)
-            {
-                for (int j = 0; i < mMeshGenerator.MeshNumberInColumn; j++)
-                {
-
-                }
-
-
-            }
-
-            
-
-            return false;
-        }
-
-
-        public bool ConfigureMeshGenerator()
-        {
-            if(null == mMeshGenerator)
-                mMeshGenerator = new SqureMeshGenerator(mBoundaryRectangle2D, mGap, mMeshLength, mMeshWidth);       
 
             return true;
         }
 
+
+        public bool PrepareAreaPointLists()
+        {
+            if (null == mMeshGenerator.MeshArrays || mMeshGenerator.MeshArrays.Length == 0)
+                return false;
+
+            // Obtain all intersection points first.
+            if(!CalculateInsectionPoints())
+                return false;
+
+            // Allocate all intersection point into perticular mesh. Then 
+            // all points are rearranged based on mesh. Note that the area  
+            // vertex that lies in gap are excluded.
+            if (!GeneratePointListInMesh())
+                return false;
+
+            // Sort all intersection points and mesh vertices in sequence
+            // for each mesh. Till now, two point lists are ready.
+            if (!GenerateMeshPointListInArea())
+                return false;
+
+            return true;
+        }
     }
 }

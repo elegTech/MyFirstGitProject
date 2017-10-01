@@ -60,6 +60,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AreaPaveManager.cs" />
+    <Compile Include="IrregularAreaPaveManager.cs" />
     <Compile Include="Mesh.cs" />
     <Compile Include="MeshGenerator.cs" />
     <Compile Include="PolygonArea.cs" />
