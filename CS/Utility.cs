@@ -21,7 +21,7 @@ namespace ParameterUtils
 
         public static double THRESHHOLDVALUE = 0.1;
 
-
+         
         /// <summary>
         /// The number of mesh vertex.
         /// </summary>

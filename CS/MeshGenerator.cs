@@ -65,7 +65,7 @@ namespace ParameterUtils
         private Line2D[] mLineArrayInColumn2D = null;
         private Line2D[] mLineArrayInRow2D = null;
 
-        private SquareMesh[,] mMeshArrays;
+        private IMeshElement[,] mMeshArrays;
 
         private bool is3DMesh = false;
 
@@ -176,7 +176,7 @@ namespace ParameterUtils
         }
 
 
-        public SquareMesh[,] MeshArrays
+        public IMeshElement[,] MeshArrays
         {
             get
             {
@@ -338,54 +338,51 @@ namespace ParameterUtils
 
             mMeshArrays = new SquareMesh[meshNumberInRow, meshNumberInColumn];
 
-            if (is3DMesh)
+            //if (is3DMesh)
+            //{
+            //    XYZ meshLocation = null;
+            //    XYZ lengthDirection = mRectangleArea3D[1] - mRectangleArea3D[0];
+            //    XYZ widthDirection = mRectangleArea3D[3] - mRectangleArea3D[0];
+
+            //    for (int i = 0; i < meshNumberInRow; i++)
+            //    {
+            //        // The first mesh's location of this row. The delta location of adjacent meshes on 
+            //        // neighboring rows is the width plusing gap, along the width direction, i.e. the direction of rows.
+            //        meshLocation = mRectangleArea3D[0] + i * (widthDirection.Normalize() * (mMeshWidth + mGap));
+
+            //        // Given the first square mesh using the location information.
+            //        mMeshArrays[i, 0] = new SquareMesh(meshLocation, lengthDirection, widthDirection, mMeshLength, mMeshWidth);
+            //        for (int j = 1; j < meshNumberInColumn; j++)
+            //        {
+            //            // The location of mesh along length direction is calculated similarly, i.e., each previous mesh's location 
+            //            // in the same row plusing delta length and gap is the current mesh's location.
+            //            meshLocation = mMeshArrays[i, j - 1].GetVertex3D(0) + j * (lengthDirection.Normalize() * (mMeshLength + mGap));
+            //            mMeshArrays[i, j] = new SquareMesh(meshLocation, lengthDirection, widthDirection, mMeshLength, mMeshWidth);
+            //        }
+            //    }
+            //}
+
+            UV meshLocation = null;
+            UV lengthDirection = mRectangleArea2D[1] - mRectangleArea2D[0];
+            UV widthDirection = mRectangleArea2D[3] - mRectangleArea2D[0];
+
+            for (int i = 0; i < meshNumberInRow; i++)
             {
-                XYZ meshLocation = null;
-                XYZ lengthDirection = mRectangleArea3D[1] - mRectangleArea3D[0];
-                XYZ widthDirection = mRectangleArea3D[3] - mRectangleArea3D[0];
+                // The first mesh's location of this row. The delta location of adjacent meshes on 
+                // neighbouring rows is the width plusing gap, along the width direction, i.e. the direction of rows.
+                meshLocation = mRectangleArea2D[0] + i * (widthDirection.Normalize() * (mMeshWidth + mGap));
 
-                for (int i = 0; i < meshNumberInRow; i++)
+                // Given the location information, a square mesh can 
+                mMeshArrays[i, 0] = new SquareMesh(meshLocation, lengthDirection, widthDirection, mMeshLength, mMeshWidth);
+                for (int j = 1; j < meshNumberInColumn; j++)
                 {
-                    // The first mesh's location of this row. The delta location of adjacent meshes on 
-                    // neighbouring rows is the width plusing gap, along the width direction, i.e. the direction of rows.
-                    meshLocation = mRectangleArea3D[0] + i * (widthDirection.Normalize() * (mMeshWidth + mGap));
-
-                    // Given the first sequare mesh using the location information.
-                    mMeshArrays[i, 0] = new SquareMesh(meshLocation, lengthDirection, widthDirection, mMeshLength, mMeshWidth);
-                    for (int j = 1; j < meshNumberInColumn; j++)
-                    {
-                        // The location of mesh along length direction is calculated similarly, i.e., each previous mesh's location 
-                        // in the same row plusing delta length and gap is the current mesh's location.
-                        meshLocation = mMeshArrays[i, j - 1].GetVertex3D(0) + j * (lengthDirection.Normalize() * (mMeshLength + mGap));
-                        mMeshArrays[i, j] = new SquareMesh(meshLocation, lengthDirection, widthDirection, mMeshLength, mMeshWidth);
-                    }
+                    // The location of mesh along length direction is calculated similarly, i.e., each previous mesh's location 
+                    // in the same row plusing delta length and gap is the current mesh's location.
+                    meshLocation = mMeshArrays[i, j - 1].GetVertex2D(0) + j * (lengthDirection.Normalize() * (mMeshLength + mGap));
+                    mMeshArrays[i, j] = new SquareMesh(meshLocation, lengthDirection, widthDirection, mMeshLength, mMeshWidth);
                 }
             }
-            else
-            {
-                UV meshLocation = null;
-                UV lengthDirection = mRectangleArea2D[1] - mRectangleArea2D[0];
-                UV widthDirection = mRectangleArea2D[3] - mRectangleArea2D[0];
 
-                for (int i = 0; i < meshNumberInRow; i++)
-                {
-                    // The first mesh's location of this row. The delta location of adjacent meshes on 
-                    // neighbouring rows is the width plusing gap, along the width direction, i.e. the direction of rows.
-                    meshLocation = mRectangleArea2D[0] + i * (widthDirection.Normalize() * (mMeshWidth + mGap));
-
-                    // Given the location information, a square mesh can 
-                    mMeshArrays[i, 0] = new SquareMesh(meshLocation, lengthDirection, widthDirection, mMeshLength, mMeshWidth);
-                    for (int j = 1; j < meshNumberInColumn; j++)
-                    {
-                        // The location of mesh along length direction is calculated similarly, i.e., each previous mesh's location 
-                        // in the same row plusing delta length and gap is the current mesh's location.
-                        meshLocation = mMeshArrays[i, j - 1].GetVertex2D(0) + j * (lengthDirection.Normalize() * (mMeshLength + mGap));
-                        mMeshArrays[i, j] = new SquareMesh(meshLocation, lengthDirection, widthDirection, mMeshLength, mMeshWidth);
-                    }
-                }
-
-
-            }
             return true;
         }
 

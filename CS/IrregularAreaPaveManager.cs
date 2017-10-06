@@ -11,6 +11,41 @@ using Autodesk.Revit.UI.Selection;
 
 namespace ParameterUtils
 {
+    struct AreaMeshIntersection
+    {
+        private List<List<UV>> intersectionList;
+
+        public List<List<UV>> IntersectionList
+        {
+            get { return intersectionList; }
+        }
+    
+        public int IntersectionCount                          
+        {
+            get 
+            {
+                if (null != intersectionList)
+                    return intersectionList.Count;
+                else
+                    return 0;
+            }
+        }
+
+
+        /// <summary>
+        /// Add a closed polygon area represented by point list. 
+        /// <param name="?"></param>               
+        public void AddPolygon(List<UV> polygonPointList)
+        {
+            if(null == intersectionList)
+                intersectionList = new List<List<UV>>();
+
+            intersectionList.Add(polygonPointList);
+        }
+    }
+
+
+
     class IrregularAreaPaveManager
     {
         private Face mFaceToBePaved;
@@ -19,9 +54,17 @@ namespace ParameterUtils
 
         private SqureMeshGenerator mMeshGenerator;
 
+        /// <summary>
+        /// Represent intersection area list. A mesh perhaps contains multiple intersection areas.
+        /// </summary>
+        private List<List<AreaMeshIntersection>> polygonList;
+        
+
+
         public IrregularAreaPaveManager(Face face, double gap, double meshLength, double meshWidth)
         {
             mFaceToBePaved = face;
+            mFaceBoundary = new PolygonArea(face, gap, meshLength, meshWidth);
             Initialize(gap, meshLength, meshWidth);
         }
 
@@ -53,8 +96,74 @@ namespace ParameterUtils
             BoundingBoxUV boundingBox = mFaceToBePaved.GetBoundingBox();
             UV[] boundingBoxPointArray = new UV[] { boundingBox.Min, boundingBox.Max };
 
-            mMeshGenerator = new SqureMeshGenerator(boundingBoxPointArray, gap, meshLength, meshWidth);
+            if(null == mMeshGenerator)
+                mMeshGenerator = new SqureMeshGenerator(boundingBoxPointArray, gap, meshLength, meshWidth);
+            else
+                mMeshGenerator.ResetData2D(boundingBoxPointArray, gap, meshLength, meshWidth);
+    
             mFaceBoundary.MeshGenerator = mMeshGenerator;
+
+            // Initialize the intersection area for each mesh.
+            polygonList = new List<List<AreaMeshIntersection>>();
+            for (int i = 0; i < mMeshGenerator.MeshNumberInRow; i++)
+            {
+                polygonList.Add(new List<AreaMeshIntersection>());
+                for (int j = 0; j < mMeshGenerator.MeshNumberInColumn; j++)
+                {
+                    polygonList[i].Add(new AreaMeshIntersection());
+                }
+            }
+        }
+
+
+
+
+
+        /// <summary>
+        /// Generate polygon areas for mesh .
+        /// </summary>
+        /// <param name="mesh"></param>
+        /// <param name="rowNumber">Mesh row number</param>
+        /// <param name="columnNumber">Mesh column number</param>
+        /// <returns></returns>
+        private bool GeneratePolygonListForMesh(IMeshElement mesh, int rowNumber, int columnNumber)
+        {
+            if (null == mesh)
+                return false;
+            
+            if (rowNumber < 0 || rowNumber >= mFaceBoundary.MeshGenerator.MeshNumberInRow)
+                return false;
+
+            if (columnNumber < 0 || rowNumber >= mFaceBoundary.MeshGenerator.MeshNumberInColumn)
+                return false;
+
+            List<PointStruct> areaPointInMesh = mFaceBoundary.AreaPointListInMesh[rowNumber][columnNumber];
+            List<PointStruct> meshPointList = mFaceBoundary.MeshPointList[rowNumber][columnNumber];
+
+            UV point, nextPoint;
+            List<UV> polygonPoints = new List<UV>();
+
+            for (int i = 0; i < areaPointInMesh.Count; i++)
+            {
+                point = areaPointInMesh[i].Point;
+
+                polygonPoints.Add(point);
+
+                // If the next point on curve is included in the mesh,  
+                if (areaPointInMesh[i+1].Contains(nextPoint))
+                {
+                    polygonPoints.Add(nextPoint);
+                        
+                }
+
+
+            }
+
+                //mFaceBoundary.MeshPointList;
+
+
+
+                return false;
         }
 
 
@@ -74,41 +183,25 @@ namespace ParameterUtils
             {
                 for(int j=0; j<meshColumnNumber; j++)
                 {
-                    // This mesh does not contain any intersection.
-                    if (mFaceBoundary.AreaPointListInMesh[i][j].Count == 0 &&
-                        mFaceBoundary.MeshPointList[i][j].Count == Utility.MESHVERTEXNUMBER)
+                    // In addition to mesh vertices, if there's no other point exists in mesh point list, 
+                    // it implies that the intersection points are mesh vertices.
+                    if (mFaceBoundary.MeshPointList[i][j].Count == Utility.MESHVERTEXNUMBER)
                     {
-                        continue;
-                    }
-
-                    // Similar to the case above.
-                    if (mFaceBoundary.AreaPointListInMesh[i][j].Count == 1 &&
-                        mFaceBoundary.MeshPointList[i][j].Count == Utility.MESHVERTEXNUMBER)
-                    {
-                        continue;
-                    }
-
-                    // Similar to the case above.
-                    if (mFaceBoundary.AreaPointListInMesh[i][j].Count == 0 &&
-                        mFaceBoundary.MeshPointList[i][j].Count == Utility.MESHVERTEXNUMBER)
-                    {
-                        if (mFaceToBePaved.IsInside(mFaceBoundary.MeshGenerator.mesh))
+                        // The mesh is completely covered by area, no matter how many intersection points 
+                        // exist in mFaceBoundary.AreaPointListInMesh[i][j].
+                        if (mFaceToBePaved.IsInside(mFaceBoundary.MeshGenerator.MeshArrays[i,j].GetMeshCenter2D()))
                         {
-
-
+                            polygonList[i][j].AddPolygon(new List<UV>(mFaceBoundary.MeshGenerator.MeshArrays[i,j].GetVertices2D()));
                         }
-
-                        continue;
                     }
-
-
+                    else
+                    {
+                        GeneratePolygonListForMesh(mFaceBoundary.MeshGenerator.MeshArrays[i,j], i, j);
+                    }
                 }
             }
-            ;
-            mFaceBoundary.MeshPointList
 
-
-            return false;
+            return true;
         }
 
 

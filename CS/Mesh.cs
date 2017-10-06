@@ -26,6 +26,16 @@ namespace ParameterUtils
 
         UV[] GetVertices2D();
 
+
+        XYZ GetVertex3D(int number);
+
+        UV GetVertex2D(int number);
+
+
+        XYZ GetMeshCenter3D();
+
+        UV GetMeshCenter2D();
+
         /// <summary>
         /// Get mesh area.
         /// </summary>
@@ -124,27 +134,6 @@ namespace ParameterUtils
             vertex2DArray[3] = new UV(vertex2DArray[0].U, vertex2DArray[0].V) + widthDirection.Normalize() * width;
         }
 
-        
-        public XYZ GetVertex3D(int vertexNo)
-        {
-            Contract.Assert(vertexNo > 0 && vertexNo < Utility.MESHVERTEXNUMBER);
-            if (null == vertex3DArray)
-                return null;
-
-            return vertex3DArray[vertexNo];
-        }
-
-
-        public UV GetVertex2D(int vertexNo)
-        {
-            Contract.Assert(vertexNo > 0 && vertexNo < Utility.MESHVERTEXNUMBER);
-            if (null == vertex2DArray)
-                return null;
-
-            return vertex2DArray[vertexNo];
-        }
-
-
         /// <summary>
         /// The side length multiplies the width is the area.
         /// </summary>
@@ -188,6 +177,61 @@ namespace ParameterUtils
         UV[] IMeshElement.GetVertices2D()
         {
             return (UV[])vertex2DArray.Clone();
+        }
+
+
+        XYZ GetVertex3D(int number)
+        {
+            if (null != vertex3DArray)
+                return null;
+
+            if (number >= 0 && number <= vertex3DArray.Length)
+                return vertex3DArray[number];
+
+            return null;
+        }
+        UV GetVertex2D(int number)
+        {
+            if (null != vertex2DArray)
+                return null;
+
+            if (number >= 0 && number <= vertex2DArray.Length)
+                return vertex2DArray[number];
+
+            return null;
+        }
+
+
+        XYZ GetMeshCenter3D()
+        {
+            if (null == vertex3DArray)
+                return null;
+            
+            XYZ tempPoint = new XYZ();
+            foreach (XYZ point in vertex3DArray)
+            {
+                tempPoint += point;
+            }
+
+            return tempPoint.Divide(vertex3DArray.Length);
+        }
+
+        /// <summary>
+        /// Get the center of all mesh vertices.
+        /// </summary>
+        /// <returns></returns>
+        UV GetMeshCenter2D()
+        {
+            if (null == vertex2DArray)
+                return null;
+
+            UV tempPoint = new UV();
+            foreach (UV point in vertex2DArray)
+            {
+                tempPoint += point;
+            }
+
+            return tempPoint.Divide(vertex2DArray.Length);
         }
     }
 }

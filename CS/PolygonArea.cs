@@ -17,7 +17,7 @@ using MathNet.Spatial.Euclidean;
 namespace ParameterUtils
 {
 
-    class PointComparer : IComparer<UV>
+    class PointComparer : IComparer<PointStruct>
     {
         private UV basePoint;
 
@@ -26,7 +26,7 @@ namespace ParameterUtils
             this.basePoint = basePoint;     
         }
 
-        int IComparer<UV>.Compare(UV x, UV y)
+        int IComparer<PointStruct>.Compare(PointStruct x, PointStruct y)
         {
             if (null == x)
             {
@@ -52,13 +52,13 @@ namespace ParameterUtils
                 }
                 else
                 {
-                    if (x == y)
+                    if (x.Point == y.Point || x == y)
                         return 0;
 
-                    if (x.IsAlmostEqualTo(y, Utility.THRESHHOLDVALUE))
+                    if (x.Point.IsAlmostEqualTo(y.Point, Utility.THRESHHOLDVALUE))
                         return 0;
 
-                    if (x.DistanceTo(basePoint) < y.DistanceTo(basePoint))
+                    if (x.Point.DistanceTo(basePoint) < y.Point.DistanceTo(basePoint))
                     {
                         return -1;
                     }
@@ -68,6 +68,36 @@ namespace ParameterUtils
                     }
                 }
             }
+        }
+    }
+    enum PointFeature { Vertex, Intersection, VertexAndIntersection };
+
+
+    class PointStruct
+    {
+        private UV mPoint;
+
+        /// <summary>
+        /// A point can be a vertex, an intersection point only or an intersection point coincident with a vertex.
+        /// </summary>  
+
+        private PointFeature mFeature;
+
+        public PointStruct(UV point, PointFeature feature)
+        {
+            mPoint = point;
+            mFeature = feature;
+        }
+
+        public UV Point
+        {
+            get {return mPoint;}
+        }
+
+        public PointFeature Feature
+        {
+            get { return mFeature; }
+            set { mFeature = value; }
         }
     }
 
@@ -95,54 +125,23 @@ namespace ParameterUtils
         /// In addition to all vertices in vertexLists, it includes 
         /// intersection points of the area boundaries and meshes.
         /// </summary>
-        private List<List<UV>> pointLists2D;
-
-
-        /// <summary>
-        /// Record 2D index of the point in pointLists2D.
-        /// </summary>
-        public struct PointListIndex
-        {
-            // They are indexes of the point in pointLists2D.
-            int curveIndexOfLoop, pointIndexOfCurve;
-            
-            // Indicate whether the point is a vertex of this area or not.
-            bool isAreaVertex;
-
-            public int CurveIndex
-            {
-                get { return curveIndexOfLoop; }
-            }
-
-            public int PointIndex
-            {
-                get { return pointIndexOfCurve; }
-            }
-
-
-            public PointListIndex(int curveIndex, int pointIndex, bool isVertex = false)
-            {
-                this.curveIndexOfLoop = curveIndex;
-                this.pointIndexOfCurve = pointIndex;
-                this.isAreaVertex = isVertex;
-            }
-        }
-
+        private List<List<PointStruct>> pointLists2D;
+        
 
         /// <summary>
-        /// It stores the points lie in specific mesh using the row index and column index
-        /// of the pointLists2D. Namely, pointListInMesh[i][j] indicates the points on 
-        /// area curves in the mesh at No.i row & No.j column. Each "PointIndex" stores 
-        /// the 2D indexs in pointLists2D/pointLists3D.
+        /// It stores the points (that belong to area boundary) lie in specific mesh using 
+        /// the row index and column index of the pointLists2D. Namely, pointListInMesh[i][j]  
+        /// indicates the points on area curves in the mesh at No.i row & No.j column.  
+        /// Each "PointIndex" stores the 2D indexs in pointLists2D/pointLists3D.
         /// </summary> 
-        private List<List<List<PointListIndex>>> pointListInMesh;
+        private List<List<List<PointStruct>>> areaPointListInMesh;
 
 
         /// <summary>
         /// Store the mesh vertices that lie in area, and the intersection points
         /// on four mesh sides (Note: not in the mesh).
         /// </summary>
-        private List<List<List<UV>>> meshPointList;
+        private List<List<List<PointStruct>>> meshPointList;
 
 
         private SqureMeshGenerator mMeshGenerator;
@@ -155,6 +154,9 @@ namespace ParameterUtils
 
         private double mMeshLength;
         private double mMeshWidth;
+
+
+        private enum Direction2D { UDirection, VDirection };
 
 
         /// <summary>
@@ -258,15 +260,15 @@ namespace ParameterUtils
         }
 
 
-        public List<List<List<PointListIndex>>> AreaPointListInMesh
+        public List<List<List<PointStruct>>> AreaPointListInMesh
         {
             get
             {
-                return pointListInMesh;
+                return areaPointListInMesh;
             }
         }
 
-        public List<List<List<UV>>> MeshPointList
+        public List<List<List<PointStruct>>> MeshPointList
         {
             get
             {
@@ -274,27 +276,32 @@ namespace ParameterUtils
             }
         }
 
+        public List<List<PointStruct>> AreaVertexAndIntersectionPointLists2D
+        {
+            get { return pointLists2D; }
+        }
+
         private void Initialize()
         {
-            // Return when the boundary is inaccessable.
+            // Return when the boundary is inaccessible.
             if (!GenerateBoundary())
                 return;
 
             mMeshGenerator = new SqureMeshGenerator(mBoundaryRectangle2D, mGap, mMeshLength, mMeshWidth);
             mMeshGenerator.GenerateMeshLines();
 
-            pointListInMesh = new List<List<List<PointListIndex>>>();
-            meshPointList = new List<List<List<UV>>>();
+            areaPointListInMesh = new List<List<List<PointStruct>>>();
+            meshPointList = new List<List<List<PointStruct>>>();
 
             // Initialize the pointListInMesh according to the row number and column number of 2D mesh arrays.
             for (int i=0; i< mMeshGenerator.MeshNumberInRow; i++)
             {
-                pointListInMesh.Add(new List<List<PointListIndex>>());
-                meshPointList.Add(new List<List<UV>>());
+                areaPointListInMesh.Add(new List<List<PointStruct>>());
+                meshPointList.Add(new List<List<PointStruct>>());
                 for (int j=0; j<mMeshGenerator.MeshNumberInColumn; j++)
                 {
-                    pointListInMesh[i].Add(new List<PointListIndex>());
-                    meshPointList[i].Add(new List<UV>());
+                    areaPointListInMesh[i].Add(new List<PointStruct>());
+                    meshPointList[i].Add(new List<PointStruct>());
                 }
             }
 
@@ -340,6 +347,7 @@ namespace ParameterUtils
         /// </summary>
         /// <param name="point"></param>
         /// <param name="mesh"></param>
+        /// <param name="isCoincidentWithMeshVertex">Return true if the input point is coincident with a mesh vertex.</param>
         /// <returns></returns>
         public int GetMeshSideThroughPoint(UV point, IMeshElement mesh, ref bool isCoincidentWithMeshVertex)
         {
@@ -359,7 +367,7 @@ namespace ParameterUtils
                 if (point == vertexList[i] || point.DistanceTo(vertexList[i]) < Utility.THRESHHOLDVALUE)
                 {
                     isCoincidentWithMeshVertex = true;
-                    return -1;
+                    return i;
                 }
 
                 startPoint = new Point2D(vertexList[i].U, vertexList[i].V);
@@ -378,6 +386,7 @@ namespace ParameterUtils
             return -1;
         }
 
+
         
         /// <summary>
         /// Sort the vertices and intersection points that lie in mesh sides
@@ -386,41 +395,42 @@ namespace ParameterUtils
         /// <returns></returns>
         private bool GenerateMeshPointListInArea()
         {
-            if (null == mFace || null == mMeshGenerator)
+            if (null == mMeshGenerator)
                 return false;
 
-            UV point = null;
+            
             bool isCoincidentWithVertex = false;
             int sideIndex = -1;
 
             // Use to store points on each mesh edge. No.i vertex belongs to
             // No.i edge.   
-            List<List<UV>> pointLists = new List<List<UV>>(Utility.MESHVERTEXNUMBER); 
+            List<List<PointStruct>> pointLists = new List<List<PointStruct>>(Utility.MESHVERTEXNUMBER); 
             for(int i=0; i<Utility.MESHVERTEXNUMBER; i++)
             {
-                pointLists.Add(new List<UV>());
+                pointLists.Add(new List<PointStruct>());
             }
 
 
             for (int i=0; i<mMeshGenerator.MeshNumberInRow; i++)
             {
-                for(int j=0; j< mMeshGenerator.MeshNumberInColumn; j++)
+                for(int j=0; j<mMeshGenerator.MeshNumberInColumn; j++)
                 {      
-                    
-                    // Add four vertices of mesh into the point list first.
+                    // Add four vertices of mesh into the point list first to keep the start vertex of each side
+                    // to be stored at the first index.
                     for (int k = 0; k < Utility.MESHVERTEXNUMBER; k++)
                     {
-                        pointLists[k].Add(mMeshGenerator.MeshArrays[i, j].GetVertex2D(k));
+                        pointLists[k].Add(new PointStruct(mMeshGenerator.MeshArrays[i, j].GetVertex2D(k), PointFeature.Vertex));
                     }
-
-                    foreach (PointListIndex pointIndex in pointListInMesh[i][j])
+                    PointStruct pointStruct;
+                    for (int k = 0; k < areaPointListInMesh[i][j].Count; i++)
                     {
-                        point = pointLists2D[pointIndex.CurveIndex][pointIndex.PointIndex];
-                        sideIndex = GetMeshSideThroughPoint(point, mMeshGenerator.MeshArrays[i, j], ref isCoincidentWithVertex);
-                        
-                        // Ignore the vertex point.
+                        pointStruct = areaPointListInMesh[i][j][k];
+                        sideIndex = GetMeshSideThroughPoint(pointStruct.Point, mMeshGenerator.MeshArrays[i, j], ref isCoincidentWithVertex);
+
+                        // Ignore the vertex point since they already exists in the mesh point list.
                         if (isCoincidentWithVertex)
                         {
+                            pointStruct.Feature = PointFeature.VertexAndIntersection;
                             continue;
                         }
 
@@ -428,20 +438,22 @@ namespace ParameterUtils
                         // Namely, points on each side maybe unordered.
                         if (sideIndex >= 0 && sideIndex <= Utility.MESHVERTEXNUMBER)
                         {
-                            pointLists[sideIndex].Add(point);
+                            pointLists[sideIndex].Add(pointStruct);
                         }
                     }
 
-                    // Sort the items in point list based on the distance to the first point.
+                    // Sort the items in point list based on the distance to the first point,
+                    // i.e, the start vertex of each mesh side.
                     for (int k = 0; k < pointLists.Count; k++)
                     {
-                        pointLists[k].Sort(delegate (UV x, UV y)
+                        pointLists[k].Sort(delegate(PointStruct x, PointStruct y)
                         {
-                            if (null == x && null == y) return 0;
-                            else if (null == x) return -1;
-                            else if (null == y) return 1;
+                            if (null == x.Point && null == y.Point) return 0;
+                            else if (null == x.Point) return -1;
+                            else if (null == y.Point) return 1;
+                            else if (x.Point == y.Point || x.Point.DistanceTo(y.Point) < Utility.THRESHHOLDVALUE) return 0;
 
-                            if ((x - pointLists[k][0]).GetLength() > (y - pointLists[k][0]).GetLength())
+                            if ((x.Point - pointLists[k][0].Point).GetLength() > (y.Point - pointLists[k][0].Point).GetLength())
                                 return 1;
                             else
                                 return -1;
@@ -484,10 +496,10 @@ namespace ParameterUtils
             // The distance between the point and the minimum coordinates of boundingBox along width direction.
             double distanceAlongWidthDirection = point2D.V - mBoundaryRectangle2D[0].V;
 
-            // Roughtly calculate which mesh the point may be located along length direction.
+            // Roughly calculate which mesh the point may be located along length direction.
             roughMeshColumnNo = (int) Math.Floor(distanceAlongLengthDirection / (mMeshLength + mGap));
 
-            // Roughtly calculate which mesh the point may be located along width direction.
+            // Roughly calculate which mesh the point may be located along width direction.
             roughMeshRowNo = (int) Math.Floor(distanceAlongWidthDirection / (mMeshWidth + mGap));
 
             // Check the U (i.e., X) coordinate value is greater than that of the mesh's right line, 
@@ -503,7 +515,215 @@ namespace ParameterUtils
             return true;
         }
 
+        /// <summary>
+        /// Calculate intersection points with specific line list for the line defined by the
+        /// start point and end point. Please note that the intersection points should be sorted
+        /// in sequence with the topological direction of startPoint->endPoint.
+        /// </summary>
+        /// <returns></returns>  
+        private List<PointStruct> IntersectWithLines(List<Line2D> lineList, UV startPoint, UV endPoint, 
+                                                    Direction2D direction, ref bool startIsIncluded)
+        {
+            if (null == lineList || lineList.Count == 0 || null == startPoint || 
+                              null == endPoint || startPoint == endPoint)
+                return null;
 
+            // No processing is needed when they are Coincident points.
+            if ((startPoint - endPoint).IsZeroLength())
+                return null;
+
+            double minValue;
+            double maxValue;
+            if (Direction2D.UDirection == direction)
+            {
+                minValue = Math.Min(startPoint.U, endPoint.U);
+                maxValue = Math.Max(startPoint.U, endPoint.U);
+            }
+            else
+            {
+                minValue = Math.Min(startPoint.V, endPoint.V);
+                maxValue = Math.Max(startPoint.V, endPoint.V);
+            }
+
+            List<PointStruct> intersectPointList = new List<PointStruct>();
+
+            // If both points are parallel with specific direction,
+            // check the startPoint is lie on a line or not, if yes,
+            // add the start point and remark that the start point is included.
+            // In this context, both points are crossed by the same line. 
+            if (Math.Abs(minValue - maxValue) < Utility.THRESHHOLDVALUE)
+            {
+                int index = lineList.FindIndex(
+                        delegate (Line2D line)
+                        {
+                            return Math.Abs(line.StartPoint.X - minValue) < Utility.THRESHHOLDVALUE;
+                        }
+                   );
+
+                if (-1 != index)
+                {
+                    intersectPointList.Add(new PointStruct(startPoint, PointFeature.VertexAndIntersection));
+                    startIsIncluded = true;
+                }
+                return intersectPointList;    
+            }
+                        
+            // Find the first index of the line that lies in the right of the start point.
+            int indexStart = -1;
+            int indexEnd = -1;
+            if (Direction2D.UDirection == direction)
+            {
+                indexStart = lineList.FindIndex(
+                        delegate(Line2D line)
+                        {
+                            return line.StartPoint.X > minValue;
+                        }
+                    );
+
+                // Find the first index of the line that lies in the left of the end point.
+                // The end index should not be found in the way shown above since the end
+                // point should not be added at the same time. 
+                indexEnd = lineList.FindLastIndex(
+                        delegate(Line2D line)
+                        {
+                            return line.EndPoint.X < maxValue;
+                        }
+                    );
+            }
+            else
+            {
+                indexStart = lineList.FindIndex(
+                        delegate(Line2D line)
+                        {
+                            return line.StartPoint.Y > minValue;
+                        }
+                    );
+
+                // Find the last index of the line below the end point.
+                // The end index should not be found in the way shown above.
+                indexEnd = lineList.FindLastIndex(
+                        delegate(Line2D line)
+                        {
+                            return line.EndPoint.Y < maxValue;
+                        }
+                    );
+            }
+
+            Line2D tempLine = new Line2D(new Point2D(startPoint.U, startPoint.V), new Point2D(endPoint.U, endPoint.V));
+            Point2D? intersectPoint;
+            for (int i = indexStart; i <= indexEnd; i++)
+            {
+                intersectPoint = lineList[i].IntersectWith(tempLine);
+                Contract.Assert(intersectPoint.HasValue);
+                if (intersectPoint.HasValue)
+                {
+                    intersectPointList.Add(new PointStruct(new UV(intersectPoint.Value.X, intersectPoint.Value.Y), PointFeature.Intersection));
+                }
+            }
+
+            if (intersectPointList.Count == 0)
+                return intersectPointList;
+
+            // In routine context, find the last line index that is less than the start point, 
+            // and the first line index that is greater than the end point to check whether  
+            // the start point is crossed by a line, i.e., it is also a intersection point.  
+            // In this context, it handles the case that the start point is crossed by a line.
+            int firstIndexGreaterThanStartPoint = -1;
+            int lastIndexLessThanStartPoint = -1;
+
+            if (Direction2D.UDirection == direction)
+            {
+                if (minValue == startPoint.U)
+                {
+                    // Check whether the start point lies on a line or not. Please note that usually the
+                    // firstIndexGreaterThanStartPoint is greater. However, if the start point lies in the
+                    // first line, phisically the start point's coordinate maybe less though it's not right
+                    // in logic.
+                    firstIndexGreaterThanStartPoint = indexStart;
+                    if (lineList[firstIndexGreaterThanStartPoint - 1].StartPoint.X == startPoint.U)
+                    {
+                        intersectPointList.Insert(0, new PointStruct(startPoint, PointFeature.VertexAndIntersection));
+                        startIsIncluded = true;
+                    }
+
+                    // Check whether the start point is nearly coincident with the nearest intersection point computed.
+                    // If yes, ramark that the start point is actually included.
+                    if (!startIsIncluded && intersectPointList[0].Point.DistanceTo(startPoint) < Utility.THRESHHOLDVALUE)
+                    {
+                        intersectPointList[0].Feature = PointFeature.VertexAndIntersection;
+                        startIsIncluded = true;
+                    }
+                }
+                if (maxValue == startPoint.U)
+                {
+                    // Check whether the start point lies on a line or not. 
+                    lastIndexLessThanStartPoint = indexEnd;
+                    if (lineList[lastIndexLessThanStartPoint + 1].StartPoint.X == startPoint.U)
+                    {
+                        intersectPointList.Add(new PointStruct(startPoint, PointFeature.VertexAndIntersection));
+                        startIsIncluded = true;
+                    }
+
+                    // Check whether the start point is nearly coincident with the nearest intersection point computed.
+                    if (!startIsIncluded && intersectPointList[intersectPointList.Count - 1].Point.DistanceTo(startPoint) < Utility.THRESHHOLDVALUE)
+                    {
+                        intersectPointList[intersectPointList.Count - 1].Feature = PointFeature.VertexAndIntersection;
+                        startIsIncluded = true;
+                    }
+                }
+            }
+            else
+            {
+                if (minValue == startPoint.V)
+                {
+                    // Check whether the start point lies on a line or not. 
+                    firstIndexGreaterThanStartPoint = indexStart;
+                    if (lineList[firstIndexGreaterThanStartPoint - 1].StartPoint.Y == startPoint.V)
+                    {
+                        intersectPointList.Insert(0, new PointStruct(startPoint, PointFeature.VertexAndIntersection));
+                        startIsIncluded = true;
+                    }
+
+
+                    // Check whether the start point is nearly coincident with the nearest intersection point computed.
+                    if (!startIsIncluded && intersectPointList[0].Point.DistanceTo(startPoint) < Utility.THRESHHOLDVALUE)
+                    {
+                        intersectPointList[0].Feature = PointFeature.VertexAndIntersection;
+                        startIsIncluded = true;
+                    }
+                }
+                if (maxValue == startPoint.V)
+                {
+                    // Check whether the start point lies on a line or not. 
+                    lastIndexLessThanStartPoint = indexEnd;
+                    if (lineList[lastIndexLessThanStartPoint + 1].StartPoint.Y == startPoint.V)
+                    {
+                        intersectPointList.Add(new PointStruct(startPoint, PointFeature.VertexAndIntersection));
+                        startIsIncluded = true;
+                    }
+
+                    // Check whether the start point is nearly coincident with the nearest intersection point computed.
+                    if (!startIsIncluded && intersectPointList[intersectPointList.Count - 1].Point.DistanceTo(startPoint) < Utility.THRESHHOLDVALUE)
+                    {
+                        intersectPointList[intersectPointList.Count - 1].Feature = PointFeature.VertexAndIntersection;
+                        startIsIncluded = true;
+                    }
+                }
+            }          
+
+            // In this case, the coordinates of end point is less than that of the start point 
+            // along U/V direction. Therefore, the items of intersection point list should be 
+            // reversed to make such items arrange along the topological direction of startPoint->endPoint.
+            if ((Direction2D.UDirection == direction && startPoint.U > endPoint.U) ||
+                (Direction2D.VDirection == direction && startPoint.V > endPoint.V))
+            {
+                intersectPointList.Reverse();
+            }
+
+            return intersectPointList;
+        }
+
+        
         /// <summary>
         /// It first get the lines lie in the interval of the start point and end point along U direction.
         /// And then find the intersection points.
@@ -512,7 +732,8 @@ namespace ParameterUtils
         /// <param name="endPoint"></param>
         /// <param name="columnIndexStart"></param>
         /// <param name="columnIndexEnd"></param>
-        private List<UV> GetIntersectPointListWithColumnLines(UV startPoint, UV endPoint)
+        [Obsolete("This method is obsolete; use method 2 instead")]
+        private List<PointStruct> GetIntersectPointListWithColumnLines1(UV startPoint, UV endPoint, ref bool startIsIncluded)
         {
             if (null == startPoint || null == endPoint || startPoint == endPoint)
                 return null;
@@ -530,6 +751,9 @@ namespace ParameterUtils
             int columnIndexStart = lineListColumn2D.FindIndex(
                     delegate (Line2D line)
                     {
+                        if (Math.Abs(line.StartPoint.X - uMin) < Utility.THRESHHOLDVALUE)
+                            return true;
+
                         return line.StartPoint.X > uMin;
                     }
                 );
@@ -539,11 +763,14 @@ namespace ParameterUtils
             int columnIndexEnd = lineListColumn2D.FindLastIndex(
                     delegate (Line2D line)
                     {
+                        if (Math.Abs(line.EndPoint.X - uMax) < Utility.THRESHHOLDVALUE)
+                            return true;
+
                         return line.EndPoint.X < uMax;
                     }
                 );
 
-            List<UV> intersectPointList = new List<UV>();
+            List<PointStruct> intersectPointList = new List<PointStruct>();
             Line2D tempLine = new Line2D(new Point2D(startPoint.U, startPoint.V), new Point2D(endPoint.U, endPoint.V));
             Point2D? intersectPoint;
             for(int i=columnIndexStart; i<=columnIndexEnd; i++)
@@ -552,8 +779,23 @@ namespace ParameterUtils
                 Contract.Assert(intersectPoint.HasValue);
                 if (intersectPoint.HasValue)
                 {
-                    intersectPointList.Add(new UV(intersectPoint.Value.X, intersectPoint.Value.Y));
+                    intersectPointList.Add(new PointStruct(new UV(intersectPoint.Value.X, intersectPoint.Value.Y), PointFeature.Intersection));
                 }
+            }
+
+            // If the start point is coincident with either the first  or the end intersection point, reset 
+            // the intersection point feature. 
+            if (intersectPointList[0].Point.DistanceTo(startPoint) < Utility.THRESHHOLDVALUE)
+            {
+                intersectPointList[0].Feature = PointFeature.VertexAndIntersection;
+                startIsIncluded = true;
+            }
+
+            if (intersectPointList[intersectPointList.Count - 1].Point.DistanceTo(startPoint) < Utility.THRESHHOLDVALUE)
+            {
+                intersectPointList[intersectPointList.Count - 1].Feature = PointFeature.VertexAndIntersection;
+                startIsIncluded = true;
+
             }
 
             // In this case, the end point lies in the left of the start point along U direction.
@@ -568,6 +810,13 @@ namespace ParameterUtils
         }
 
 
+        private List<PointStruct> GetIntersectPointListWithColumnLines2(UV startPoint, UV endPoint, ref bool startIsIncluded)
+        {
+            List<Line2D> lineListColumn2D = new List<Line2D>(mMeshGenerator.LineArrayInColumn2D);
+            return IntersectWithLines(lineListColumn2D, startPoint, endPoint, Direction2D.UDirection, ref startIsIncluded);
+        }
+
+
         /// <summary>
         /// It first get the lines lie in the interval of the start point and end point along V direction.
         /// And then find the intersection points.
@@ -576,7 +825,8 @@ namespace ParameterUtils
         /// <param name="endPoint"></param>
         /// <param name="columnIndexStart"></param>
         /// <param name="columnIndexEnd"></param>
-        private List<UV> GetIntersectPointListWithRowLines(UV startPoint, UV endPoint)
+        [Obsolete("This method is obsolete; use method 2 instead")]
+        private List<PointStruct> GetIntersectPointListWithRowLines1(UV startPoint, UV endPoint, ref bool startIsIncluded)
         {
             if (null == startPoint || null == endPoint || startPoint == endPoint)
                 return null;
@@ -594,6 +844,9 @@ namespace ParameterUtils
             int rowIndexStart = lineListRow2D.FindIndex(
                     delegate (Line2D line)
                     {
+                        if (Math.Abs(line.StartPoint.Y - vMin) < Utility.THRESHHOLDVALUE)
+                            return true;
+
                         return line.StartPoint.Y > vMin;
                     }
                 );
@@ -603,11 +856,14 @@ namespace ParameterUtils
             int rowIndexEnd = lineListRow2D.FindLastIndex(
                     delegate (Line2D line)
                     {
+                        if (Math.Abs(line.EndPoint.Y - vMax) < Utility.THRESHHOLDVALUE)
+                            return true;
+
                         return line.EndPoint.Y < vMax;
                     }
                 );
 
-            List<UV> intersectPointList = new List<UV>();
+            List<PointStruct> intersectPointList = new List<PointStruct>();
             Line2D tempLine = new Line2D(new Point2D(startPoint.U, startPoint.V), new Point2D(endPoint.U, endPoint.V));
             Point2D? intersectPoint;
             for (int i = rowIndexStart; i <= rowIndexEnd; i++)
@@ -616,8 +872,22 @@ namespace ParameterUtils
                 Contract.Assert(intersectPoint.HasValue);
                 if (intersectPoint.HasValue)
                 {
-                    intersectPointList.Add(new UV(intersectPoint.Value.X, intersectPoint.Value.Y));
+                    intersectPointList.Add(new PointStruct(new UV(intersectPoint.Value.X, intersectPoint.Value.Y), PointFeature.Intersection));
                 }
+            }
+
+            // If the start point is coincident with either the first  or the end intersection point, reset its feature. 
+            if (intersectPointList[0].Point.DistanceTo(startPoint) < Utility.THRESHHOLDVALUE)
+            {
+                intersectPointList[0].Feature = PointFeature.VertexAndIntersection;
+                startIsIncluded = true;
+            }
+
+            if (intersectPointList[intersectPointList.Count - 1].Point.DistanceTo(startPoint) < Utility.THRESHHOLDVALUE)
+            {
+                intersectPointList[intersectPointList.Count - 1].Feature = PointFeature.VertexAndIntersection;
+                startIsIncluded = true;
+
             }
 
             // In this case, the end point lies in the left of the start point along U direction.
@@ -631,15 +901,23 @@ namespace ParameterUtils
             return intersectPointList;
         }
 
+
+        private List<PointStruct> GetIntersectPointListWithRowLines2(UV startPoint, UV endPoint, ref bool startIsIncluded)
+        {
+            List<Line2D> lineListColumn2D = new List<Line2D>(mMeshGenerator.LineArrayInRow2D);
+            return IntersectWithLines(lineListColumn2D, startPoint, endPoint, Direction2D.VDirection, ref startIsIncluded);
+        }
+
+
         /// <summary>
         /// Use binary search method to find the target point.
         /// </summary>
         /// <param name="pointList"></param>
         /// <param name="point"></param>
         /// <param name="comparer"></param>
-        private void SearchAndInsert(List<UV> pointList, UV point, PointComparer comparer)
+        private void SearchAndInsert(List<PointStruct> pointList, PointStruct point, PointComparer comparer)
         {
-            if (null == pointList || null == comparer)
+            if (null == pointList || null == comparer || null == point)
                 return;
 
             // If the point is not found, a negative number that is the bitwise 
@@ -663,13 +941,13 @@ namespace ParameterUtils
         /// </summary>
         /// <param name="pointList">Point list consists of sequential points with ascending distance to the first item.</param>
         /// <param name="point">Point that will be inserted.</param>
-        private List<UV> InsertPointBasedOnDistance(List<UV> pointListColumn, List<UV> pointListRow, UV startPoint)
+        private List<PointStruct> InsertPointBasedOnDistance(List<PointStruct> pointListColumn, List<PointStruct> pointListRow, UV startPoint)
         {
             if (null == pointListColumn || null == pointListRow || pointListColumn.Count == 0 || pointListRow.Count == 0)
                 return null;
 
-            List<UV> pointListWithShortLength;
-            List<UV> pointListWithLongerLength;
+            List<PointStruct> pointListWithShortLength;
+            List<PointStruct> pointListWithLongerLength;
 
             if (pointListColumn.Count > pointListRow.Count)
             {
@@ -702,19 +980,20 @@ namespace ParameterUtils
         /// <returns></returns>
         public bool CalculateInsectionPoints()
         {
-            pointLists2D = new List<List<UV>>();
+            pointLists2D = new List<List<PointStruct>>();
 
             UV startPoint, endPoint;
             
             // Store all intersection points of area edges and mesh lines.
-            List<UV> intersectPointListRow;
-            List<UV> intersectPointListColumn;
-            List<UV> intersectPointList;
+            List<PointStruct> intersectPointListRow;
+            List<PointStruct> intersectPointListColumn;
+            List<PointStruct> intersectPointList;
+            bool startIsIncluded = false;
 
             // Traverse each curve loop's vertices along topological direction.
             for (int i=0; i<vertexLists2D.Count; i++)
             {
-                pointLists2D[i] = new List<UV>();
+                pointLists2D[i] = new List<PointStruct>();
                 for (int j=0; j<vertexLists2D[i].Count;)
                 {
                     // An edge defined by two points.
@@ -724,15 +1003,20 @@ namespace ParameterUtils
                     endPoint = vertexLists2D[i][j % vertexLists2D[i].Count];
 
                     // Get intersect points with column lines and row lines individually.
-                    intersectPointListRow = GetIntersectPointListWithRowLines(startPoint, endPoint);
-                    intersectPointListColumn = GetIntersectPointListWithColumnLines(startPoint, endPoint);
+                    intersectPointListRow = GetIntersectPointListWithRowLines2(startPoint, endPoint, ref startIsIncluded);
+                    intersectPointListColumn = GetIntersectPointListWithColumnLines2(startPoint, endPoint, ref startIsIncluded);
 
                     // Sort all the intersect points based on the distance to the start point.
                     intersectPointList = InsertPointBasedOnDistance(intersectPointListRow, intersectPointListColumn, startPoint);
 
                     // Add the start point and all sorted points into the target point list. These
-                    // points are arranged in sequnce along the edge specified by startPoint->endPoint.
-                    pointLists2D[i].Add(startPoint);
+                    // points are arranged in sequence along the edge specified by startPoint->endPoint.
+                    // If the start point is not included during intersection calculation, it should be 
+                    // added into the point list as a simple vertex. Otherwise, the start point has been
+                    // added into the intersection point list, there is no need to add it repeatedly.
+                    if (!startIsIncluded)
+                        pointLists2D[i].Add(new PointStruct(startPoint, PointFeature.Vertex));
+                    
                     pointLists2D[i].AddRange(intersectPointList);
                 }
             }
@@ -741,7 +1025,7 @@ namespace ParameterUtils
         }
 
         // For each mesh, get the points lie in the mesh. Actually, it's easy to get such information for 
-        // intersection points when calculats them in "GetIntersectPointListWithRowLines". However, we 
+        // intersection points when calculates them in "GetIntersectPointListWithRowLines". However, we 
         // regenerate it here straightly for easy understanding, temporarily ignoring the efficiency. Additionally,
         // the rule for calculating which mesh the point lies in varies when there's no gap between two meshes.  
         public bool GeneratePointListInMesh()
@@ -758,14 +1042,14 @@ namespace ParameterUtils
             {
                 for (int j=0; j< pointLists2D[i].Count; j++)
                 {
-                    if (!CalculateMeshNo(pointLists2D[i][j], ref roughMeshColumnNo, 
+                    if (!CalculateMeshNo(pointLists2D[i][j].Point, ref roughMeshColumnNo, 
                             ref roughMeshRowNo, ref isInColumnGap, ref isInRowGap))
                         continue;
 
-                    // If a vertex lies in gap, this vertex will be out of consideration.
+                    // If a point lies in gap, this point will be out of consideration.
                     if(!isInColumnGap && !isInRowGap)
                     {
-                        pointListInMesh[roughMeshRowNo][roughMeshColumnNo].Add(new PointListIndex(i,j));
+                        areaPointListInMesh[roughMeshRowNo][roughMeshColumnNo].Add(pointLists2D[i][j]);
                     }
                 }
             }
@@ -783,7 +1067,7 @@ namespace ParameterUtils
             if(!CalculateInsectionPoints())
                 return false;
 
-            // Allocate all intersection point into perticular mesh. Then 
+            // Allocate all intersection point into particular mesh. Then 
             // all points are rearranged based on mesh. Note that the area  
             // vertex that lies in gap are excluded.
             if (!GeneratePointListInMesh())
