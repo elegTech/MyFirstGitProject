@@ -91,7 +91,11 @@ namespace ParameterUtils
 
         public UV Point
         {
-            get {return mPoint;}
+            set
+            {
+                mPoint = value;
+            }
+            get { return mPoint; }
         }
 
         public PointFeature Feature
@@ -403,7 +407,7 @@ namespace ParameterUtils
             int sideIndex = -1;
 
             // Use to store points on each mesh edge. No.i vertex belongs to
-            // No.i edge.   
+            // No.i edge.    
             List<List<PointStruct>> pointLists = new List<List<PointStruct>>(Utility.MESHVERTEXNUMBER); 
             for(int i=0; i<Utility.MESHVERTEXNUMBER; i++)
             {
@@ -417,9 +421,9 @@ namespace ParameterUtils
                 {      
                     // Add four vertices of mesh into the point list first to keep the start vertex of each side
                     // to be stored at the first index.
-                    for (int k = 0; k < Utility.MESHVERTEXNUMBER; k++)
+                    for (int sideNo = 0; sideNo < Utility.MESHVERTEXNUMBER; sideNo++)
                     {
-                        pointLists[k].Add(new PointStruct(mMeshGenerator.MeshArrays[i, j].GetVertex2D(k), PointFeature.Vertex));
+                        pointLists[sideNo].Add(new PointStruct(mMeshGenerator.MeshArrays[i, j].GetVertex2D(k), PointFeature.Vertex));
                     }
                     PointStruct pointStruct;
                     for (int k = 0; k < areaPointListInMesh[i][j].Count; i++)
@@ -428,9 +432,13 @@ namespace ParameterUtils
                         sideIndex = GetMeshSideThroughPoint(pointStruct.Point, mMeshGenerator.MeshArrays[i, j], ref isCoincidentWithVertex);
 
                         // Ignore the vertex point since they already exists in the mesh point list.
+                        // Remark that the vertex is also an intersection point. Set the mesh vertex
+                        // point as the intersection point since the vertex point is precise, noting  
+                        // that calculating intersection point may introduce error.
                         if (isCoincidentWithVertex)
                         {
-                            pointStruct.Feature = PointFeature.VertexAndIntersection;
+                            pointStruct.Point = pointLists[sideIndex][0].Point;
+                            pointLists[sideIndex][0].Feature = PointFeature.VertexAndIntersection;
                             continue;
                         }
 
@@ -650,6 +658,7 @@ namespace ParameterUtils
                     // If yes, ramark that the start point is actually included.
                     if (!startIsIncluded && intersectPointList[0].Point.DistanceTo(startPoint) < Utility.THRESHHOLDVALUE)
                     {
+                        intersectPointList[0].Point = startPoint;
                         intersectPointList[0].Feature = PointFeature.VertexAndIntersection;
                         startIsIncluded = true;
                     }
@@ -667,6 +676,7 @@ namespace ParameterUtils
                     // Check whether the start point is nearly coincident with the nearest intersection point computed.
                     if (!startIsIncluded && intersectPointList[intersectPointList.Count - 1].Point.DistanceTo(startPoint) < Utility.THRESHHOLDVALUE)
                     {
+                        intersectPointList[intersectPointList.Count - 1].Point = startPoint;
                         intersectPointList[intersectPointList.Count - 1].Feature = PointFeature.VertexAndIntersection;
                         startIsIncluded = true;
                     }
@@ -688,6 +698,7 @@ namespace ParameterUtils
                     // Check whether the start point is nearly coincident with the nearest intersection point computed.
                     if (!startIsIncluded && intersectPointList[0].Point.DistanceTo(startPoint) < Utility.THRESHHOLDVALUE)
                     {
+                        intersectPointList[0].Point = startPoint;
                         intersectPointList[0].Feature = PointFeature.VertexAndIntersection;
                         startIsIncluded = true;
                     }
@@ -705,6 +716,7 @@ namespace ParameterUtils
                     // Check whether the start point is nearly coincident with the nearest intersection point computed.
                     if (!startIsIncluded && intersectPointList[intersectPointList.Count - 1].Point.DistanceTo(startPoint) < Utility.THRESHHOLDVALUE)
                     {
+                        intersectPointList[intersectPointList.Count - 1].Point = startPoint;
                         intersectPointList[intersectPointList.Count - 1].Feature = PointFeature.VertexAndIntersection;
                         startIsIncluded = true;
                     }
@@ -1015,7 +1027,9 @@ namespace ParameterUtils
                     // added into the point list as a simple vertex. Otherwise, the start point has been
                     // added into the intersection point list, there is no need to add it repeatedly.
                     if (!startIsIncluded)
+                    {
                         pointLists2D[i].Add(new PointStruct(startPoint, PointFeature.Vertex));
+                    }
                     
                     pointLists2D[i].AddRange(intersectPointList);
                 }

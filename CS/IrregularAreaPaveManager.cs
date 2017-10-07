@@ -11,7 +11,7 @@ using Autodesk.Revit.UI.Selection;
 
 namespace ParameterUtils
 {
-    struct AreaMeshIntersection
+    class AreaMeshIntersection
     {
         private List<List<UV>> intersectionList;
 
@@ -116,7 +116,12 @@ namespace ParameterUtils
         }
 
 
+        private bool GeneratePolygonForMesh()
+        {
 
+
+            return;
+        }
 
 
         /// <summary>
@@ -130,7 +135,7 @@ namespace ParameterUtils
         {
             if (null == mesh)
                 return false;
-            
+
             if (rowNumber < 0 || rowNumber >= mFaceBoundary.MeshGenerator.MeshNumberInRow)
                 return false;
 
@@ -140,13 +145,93 @@ namespace ParameterUtils
             List<PointStruct> areaPointInMesh = mFaceBoundary.AreaPointListInMesh[rowNumber][columnNumber];
             List<PointStruct> meshPointList = mFaceBoundary.MeshPointList[rowNumber][columnNumber];
 
-            UV point, nextPoint;
+
+            // Get an area vertex first.
+            int index = areaPointInMesh.FindIndex(
+                    delegate (PointStruct pointStruct)
+                    {
+                        return pointStruct.Feature == PointFeature.Vertex;
+                    }
+                );
+
+            // It means no area vertex lies in this mesh, in other words, 
+            // this mesh can be ignored since no intersection exists.
+            if (-1 == index)
+            {
+                return true;
+            }
+
+
             List<UV> polygonPoints = new List<UV>();
+            polygonPoints.Add(areaPointInMesh[index].Point);
+            int polygonStartIndex = -1;
+            int polygonEndIndex = -1;
+
+            while (0 != index)
+            {
+                if (PointFeature.Vertex == areaPointInMesh[index].Feature)
+                {
+                    index--;
+                }
+                else if (PointFeature.Intersection == areaPointInMesh[index].Feature ||
+                    PointFeature.VertexAndIntersection == areaPointInMesh[index].Feature ||)
+                {
+                    polygonStartIndex = index;
+                    break;
+                }
+            }
+            while (index < areaPointInMesh.Count)
+            {
+                if (PointFeature.Vertex == areaPointInMesh[index].Feature)
+                {
+                    index++;
+                }
+                else if (PointFeature.Intersection == areaPointInMesh[index].Feature ||
+                    PointFeature.VertexAndIntersection == areaPointInMesh[index].Feature ||)
+                {
+                    polygonEndIndex = index;
+                    break;
+                }
+            }
+
+            for (int i = polygonStartIndex; i < polygonEndIndex; i++)
+            {
+                polygonPoints.Add(areaPointInMesh[i].Point);
+            }
+
+
+
+
+
+            polygonList[rowNumber][columnNumber].AddPolygon(new List<UV>());
+
+
+
+
+            for (int i=0; i<areaPointInMesh.Count; i++)
+            {
+                
+
+            }
+
+
+
+
+
+
+
+            UV point, nextPoint;
+            AreaMeshIntersection meshAreaList = new AreaMeshIntersection();
+
+
+
+
+
+
 
             for (int i = 0; i < areaPointInMesh.Count; i++)
             {
                 point = areaPointInMesh[i].Point;
-
                 polygonPoints.Add(point);
 
                 // If the next point on curve is included in the mesh,  
