@@ -43,6 +43,14 @@ namespace ParameterUtils
 
             intersectionList.Add(polygonPointList);
         }
+
+        public void Clear()
+        {
+            for (int i = 0; i < intersectionList.Count; i++)
+                intersectionList[i].Clear();
+
+            intersectionList.Clear();
+        }
     }
 
 
@@ -311,8 +319,17 @@ namespace ParameterUtils
             return true;
         }
 
-
-
-
+        public void Clear()
+        {
+            for(int i=0; i<polygonList.Count;i++)
+            {
+                for (int j = 0; j < polygonList[i].Count; j++)
+                {
+                    polygonList[i][j].Clear();
+                }
+                polygonList[i].Clear();
+            }
+            polygonList.Clear();
+        }
     }
 }

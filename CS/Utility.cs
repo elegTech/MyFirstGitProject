@@ -145,6 +145,5 @@ namespace ParameterUtils
 
             return vertexLists2D;
         }
-
     }
 }
