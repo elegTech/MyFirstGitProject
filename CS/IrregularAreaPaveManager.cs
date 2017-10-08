@@ -147,12 +147,12 @@ namespace ParameterUtils
             int polygonStartIndexInArea = index - 1;
             while (polygonStartIndexInArea >= 0)
             {
-                if (PointFeature.Vertex == areaPointInMesh[index].Feature)
+                if (PointFeature.Vertex == areaPointInMesh[polygonStartIndexInArea].Feature)
                 {
                     polygonStartIndexInArea--;
                 }
-                else if (PointFeature.Intersection == areaPointInMesh[index].Feature ||
-                    PointFeature.VertexAndIntersection == areaPointInMesh[index].Feature)
+                else if (PointFeature.Intersection == areaPointInMesh[polygonStartIndexInArea].Feature ||
+                    PointFeature.VertexAndIntersection == areaPointInMesh[polygonStartIndexInArea].Feature)
                 {
                     break;
                 }
@@ -161,12 +161,12 @@ namespace ParameterUtils
             int polygonEndIndexInArea = index + 1;
             while (polygonEndIndexInArea < areaPointInMesh.Count)
             {
-                if (PointFeature.Vertex == areaPointInMesh[index].Feature)
+                if (PointFeature.Vertex == areaPointInMesh[polygonEndIndexInArea].Feature)
                 {
                     polygonEndIndexInArea++;
                 }
-                else if (PointFeature.Intersection == areaPointInMesh[index].Feature ||
-                    PointFeature.VertexAndIntersection == areaPointInMesh[index].Feature)
+                else if (PointFeature.Intersection == areaPointInMesh[polygonEndIndexInArea].Feature ||
+                    PointFeature.VertexAndIntersection == areaPointInMesh[polygonEndIndexInArea].Feature)
                 {
                     break;
                 }
@@ -223,11 +223,17 @@ namespace ParameterUtils
             // points between them in mesh point list.
             for (int i = startPointIndexInMesh+1; i < endPointIndexInMesh; i++)
             {
+                // If the three points indicated by i-1, i, i+1 are colinear, ignore the second point.
+                if ((meshPointList[i].Point - meshPointList[i-1].Point).AngleTo(
+                     meshPointList[i+1].Point - meshPointList[i].Point) < Utility.THRESHHOLDVALUE)
+                    continue;
+
                 polygonPoints.Add(meshPointList[i].Point);
             }
 
-            // Remove the added vetices in areaPointInMesh. 
-            areaPointInMesh.RemoveRange(polygonStartIndexInArea, polygonEndIndexInArea - polygonStartIndexInArea + 1);
+            // Remove the added vetices in areaPointInMesh. Note both end 
+            // intersection points remain in area point list.
+            areaPointInMesh.RemoveRange(polygonStartIndexInArea+1, polygonEndIndexInArea - polygonStartIndexInArea - 1);
 
             return polygonPoints;
         }
