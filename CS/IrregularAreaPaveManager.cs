@@ -330,6 +330,7 @@ namespace ParameterUtils
                 polygonList[i].Clear();
             }
             polygonList.Clear();
+            mFaceBoundary.Clear();
         }
     }
 }
