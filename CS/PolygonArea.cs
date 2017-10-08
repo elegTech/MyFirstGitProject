@@ -313,6 +313,34 @@ namespace ParameterUtils
         }
 
 
+        // Clear all lists to recycle storage.
+        public void Clear()
+        {
+            for (int i = 0; i < mMeshGenerator.MeshNumberInRow; i++)
+            {
+                for (int j = 0; j < mMeshGenerator.MeshNumberInColumn; j++)
+                {
+                    areaPointListInMesh[i][j].Clear();
+                    meshPointList[i][j].Clear();
+                }
+                areaPointListInMesh[i].Clear();
+                meshPointList[i].Clear();
+            }
+
+            meshPointList.Clear();
+            areaPointListInMesh.Clear();
+
+            for (int i = 0; i < vertexLists2D.Count; i++)
+                vertexLists2D[i].Clear();
+
+            for (int i = 0; i < pointLists2D.Count; i++)
+                pointLists2D[i].Clear();
+
+            vertexLists2D.Clear();
+            pointLists2D.Clear();
+        }
+
+
         private bool GetEdgeVertex2D()
         {
             Contract.Assert(null != mFace);

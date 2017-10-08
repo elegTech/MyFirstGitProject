@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Diagnostics.Contracts;
 
 using Autodesk.Revit;
 using Autodesk.Revit.DB;
@@ -116,11 +117,119 @@ namespace ParameterUtils
         }
 
 
-        private bool GeneratePolygonForMesh()
+        private List<UV> GeneratePolygonForMesh(List<PointStruct> areaPointInMesh, List<PointStruct> meshPointList)
         {
+            if (null == areaPointInMesh || areaPointInMesh.Count == 0)
+                return null;
+
+            if (null == meshPointList || meshPointList.Count == 0)
+                return null;
+
+            // Get an area vertex first.
+            int index = areaPointInMesh.FindIndex(
+                    delegate (PointStruct pointStruct)
+                    {
+                        return pointStruct.Feature == PointFeature.Vertex;
+                    }
+                );
+
+            // It means no area vertex lies in this mesh, in other words, 
+            // this mesh can be ignored since no intersection exists.
+            if (-1 == index)
+            {
+                return null;
+            }
 
 
-            return;
+            // A closed area consists of two point lists: (1)point list in area point list; 
+            // (2) point list in mesh point list; It will find the former list first and then the next.
+            List<UV> polygonPoints = new List<UV>();
+            int polygonStartIndexInArea = index - 1;
+            while (polygonStartIndexInArea >= 0)
+            {
+                if (PointFeature.Vertex == areaPointInMesh[index].Feature)
+                {
+                    polygonStartIndexInArea--;
+                }
+                else if (PointFeature.Intersection == areaPointInMesh[index].Feature ||
+                    PointFeature.VertexAndIntersection == areaPointInMesh[index].Feature)
+                {
+                    break;
+                }
+            }
+
+            int polygonEndIndexInArea = index + 1;
+            while (polygonEndIndexInArea < areaPointInMesh.Count)
+            {
+                if (PointFeature.Vertex == areaPointInMesh[index].Feature)
+                {
+                    polygonEndIndexInArea++;
+                }
+                else if (PointFeature.Intersection == areaPointInMesh[index].Feature ||
+                    PointFeature.VertexAndIntersection == areaPointInMesh[index].Feature)
+                {
+                    break;
+                }
+            }
+
+
+            // Get the points in mesh point list that belong to an intersection which will form a closed area.
+            // Please note that all points of the closed area are listed in anticlockwise sequence. Therefore,
+            // The point areaPointInMesh[polygonEndIndex] is the start point in meshPointList.
+            int startPointIndexInMesh;
+            int endPointIndexInMesh;
+
+            startPointIndexInMesh = meshPointList.FindIndex(
+              delegate (PointStruct pointStruct)
+              {
+                  if (pointStruct.Point == areaPointInMesh[polygonEndIndexInArea].Point)
+                      return true;
+
+                  if (pointStruct.Point.DistanceTo(areaPointInMesh[polygonEndIndexInArea].Point) < Utility.THRESHHOLDVALUE)
+                      return true;
+
+                  return false;
+              });
+
+            // The intersection point must exist in the meshPointList.
+            Contract.Assert(-1 != startPointIndexInMesh);
+            if(-1 == startPointIndexInMesh)
+            {
+                return null;
+            }
+
+            // There are two methods to get the last point in mesh point list:
+            // (1) Just find the point defined by areaPointInMesh[polygonEndIndex] in 
+            // mesh point list; (2) Start from the startPointIndexInMesh, iterate the
+            // mesh point list to get the first intersection point. The second one is
+            // used for efficiency.
+            endPointIndexInMesh = startPointIndexInMesh;
+            while (++endPointIndexInMesh < meshPointList.Count)
+            {
+                if (PointFeature.Intersection == meshPointList[endPointIndexInMesh].Feature ||
+                    PointFeature.VertexAndIntersection == meshPointList[endPointIndexInMesh].Feature)
+                {
+                    break;
+                }
+            }
+            
+            // Add the points in area point list that consis of a closed area.
+            for (int i = polygonStartIndexInArea; i < polygonEndIndexInArea; i++)
+            {
+                polygonPoints.Add(areaPointInMesh[i].Point);
+            }
+
+            // The intersection points have been added above, here add only the 
+            // points between them in mesh point list.
+            for (int i = startPointIndexInMesh+1; i < endPointIndexInMesh; i++)
+            {
+                polygonPoints.Add(meshPointList[i].Point);
+            }
+
+            // Remove the added vetices in areaPointInMesh. 
+            areaPointInMesh.RemoveRange(polygonStartIndexInArea, polygonEndIndexInArea - polygonStartIndexInArea + 1);
+
+            return polygonPoints;
         }
 
 
@@ -146,109 +255,16 @@ namespace ParameterUtils
             List<PointStruct> meshPointList = mFaceBoundary.MeshPointList[rowNumber][columnNumber];
 
 
-            // Get an area vertex first.
-            int index = areaPointInMesh.FindIndex(
-                    delegate (PointStruct pointStruct)
-                    {
-                        return pointStruct.Feature == PointFeature.Vertex;
-                    }
-                );
-
-            // It means no area vertex lies in this mesh, in other words, 
-            // this mesh can be ignored since no intersection exists.
-            if (-1 == index)
-            {
-                return true;
-            }
-
-
-            List<UV> polygonPoints = new List<UV>();
-            polygonPoints.Add(areaPointInMesh[index].Point);
-            int polygonStartIndex = -1;
-            int polygonEndIndex = -1;
-
-            while (0 != index)
-            {
-                if (PointFeature.Vertex == areaPointInMesh[index].Feature)
-                {
-                    index--;
-                }
-                else if (PointFeature.Intersection == areaPointInMesh[index].Feature ||
-                    PointFeature.VertexAndIntersection == areaPointInMesh[index].Feature ||)
-                {
-                    polygonStartIndex = index;
-                    break;
-                }
-            }
-            while (index < areaPointInMesh.Count)
-            {
-                if (PointFeature.Vertex == areaPointInMesh[index].Feature)
-                {
-                    index++;
-                }
-                else if (PointFeature.Intersection == areaPointInMesh[index].Feature ||
-                    PointFeature.VertexAndIntersection == areaPointInMesh[index].Feature ||)
-                {
-                    polygonEndIndex = index;
-                    break;
-                }
-            }
-
-            for (int i = polygonStartIndex; i < polygonEndIndex; i++)
-            {
-                polygonPoints.Add(areaPointInMesh[i].Point);
-            }
-
-
-
-
-
-            polygonList[rowNumber][columnNumber].AddPolygon(new List<UV>());
-
-
-
-
-            for (int i=0; i<areaPointInMesh.Count; i++)
-            {
-                
-
-            }
-
-
-
-
-
-
-
-            UV point, nextPoint;
             AreaMeshIntersection meshAreaList = new AreaMeshIntersection();
-
-
-
-
-
-
-
-            for (int i = 0; i < areaPointInMesh.Count; i++)
+            List<UV> polygonPoints = null;
+            do
             {
-                point = areaPointInMesh[i].Point;
-                polygonPoints.Add(point);
-
-                // If the next point on curve is included in the mesh,  
-                if (areaPointInMesh[i+1].Contains(nextPoint))
-                {
-                    polygonPoints.Add(nextPoint);
-                        
-                }
-
-
+                polygonPoints = GeneratePolygonForMesh(areaPointInMesh, meshPointList);
+                meshAreaList.AddPolygon(polygonPoints);
             }
+            while (null != polygonPoints);
 
-                //mFaceBoundary.MeshPointList;
-
-
-
-                return false;
+            return true;
         }
 
 
