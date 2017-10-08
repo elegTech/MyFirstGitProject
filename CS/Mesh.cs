@@ -180,7 +180,7 @@ namespace ParameterUtils
         }
 
 
-        XYZ GetVertex3D(int number)
+        XYZ IMeshElement.GetVertex3D(int number)
         {
             if (null != vertex3DArray)
                 return null;
@@ -190,7 +190,7 @@ namespace ParameterUtils
 
             return null;
         }
-        UV GetVertex2D(int number)
+        UV IMeshElement.GetVertex2D(int number)
         {
             if (null != vertex2DArray)
                 return null;
@@ -202,7 +202,7 @@ namespace ParameterUtils
         }
 
 
-        XYZ GetMeshCenter3D()
+        XYZ IMeshElement.GetMeshCenter3D()
         {
             if (null == vertex3DArray)
                 return null;
@@ -220,7 +220,7 @@ namespace ParameterUtils
         /// Get the center of all mesh vertices.
         /// </summary>
         /// <returns></returns>
-        UV GetMeshCenter2D()
+        UV IMeshElement.GetMeshCenter2D()
         {
             if (null == vertex2DArray)
                 return null;
