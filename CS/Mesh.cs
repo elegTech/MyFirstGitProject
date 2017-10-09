@@ -17,30 +17,33 @@ namespace ParameterUtils
     /// </summary>
     interface IMeshElement
     {
+        #region Data accessor
+
         /// <summary>
         /// Get mesh vertices, which depends on detailed implementation. 
         /// As a protocol, note that the vertices should be in anticlockwise sequence.
         /// </summary>
         /// <returns>The vertices of the mesh.</returns>
         XYZ[] GetVertices3D();
-
         UV[] GetVertices2D();
 
-
         XYZ GetVertex3D(int number);
-
         UV GetVertex2D(int number);
 
-
         XYZ GetMeshCenter3D();
-
         UV GetMeshCenter2D();
 
+        #endregion
+
+        #region Interface operations
+       
         /// <summary>
         /// Get mesh area.
         /// </summary>
         /// <returns>The area of the mesh</returns>
-        double GetArea();         
+        double GetArea();
+        
+        #endregion
     }
 
     /// <summary>
@@ -55,15 +58,19 @@ namespace ParameterUtils
     /// </summary>
     public class SquareMesh : IMeshElement
     {
+        #region Private variables.
+
         /// <summary>
         /// Four vertices of a square mesh. VertexArray[0] represents the bottom left vertex.
         /// VertexArray[1] represents the bottom right vertex.
         /// </summary>
         private XYZ[] vertex3DArray;
 
-
         private UV[] vertex2DArray;
 
+        #endregion
+
+        #region Constructors
         /// <summary>
         /// Please note that the input vertex list should be in anticlockwise sequence 
         /// to obey interface protocol.
@@ -88,6 +95,7 @@ namespace ParameterUtils
             vertices.CopyTo(vertex2DArray, 0);
         }
 
+        
 
 
         /// <summary>
@@ -133,7 +141,9 @@ namespace ParameterUtils
             vertex2DArray[2] = new UV(vertex2DArray[1].U, vertex2DArray[1].V) + widthDirection.Normalize() * width;
             vertex2DArray[3] = new UV(vertex2DArray[0].U, vertex2DArray[0].V) + widthDirection.Normalize() * width;
         }
+        #endregion
 
+        #region Interface implementation
         /// <summary>
         /// The side length multiplies the width is the area.
         /// </summary>
@@ -166,9 +176,12 @@ namespace ParameterUtils
         /// <returns>Clone of vetices</returns>
         XYZ[] IMeshElement.GetVertices3D()
         {
-            return (XYZ[])vertex3DArray.Clone();
-        }
+            if (null != vertex3DArray)
+                return (XYZ[])vertex3DArray.Clone();
 
+            return null;
+        }
+        
 
         /// <summary>
         /// Return 2D vertices.
@@ -176,13 +189,16 @@ namespace ParameterUtils
         /// <returns></returns>
         UV[] IMeshElement.GetVertices2D()
         {
-            return (UV[])vertex2DArray.Clone();
+            if(null != vertex2DArray)
+                return (UV[])vertex2DArray.Clone();
+
+            return null;
         }
 
 
         XYZ IMeshElement.GetVertex3D(int number)
         {
-            if (null != vertex3DArray)
+            if (null != vertex3DArray || vertex3DArray.Length == 0)
                 return null;
 
             if (number >= 0 && number <= vertex3DArray.Length)
@@ -190,9 +206,11 @@ namespace ParameterUtils
 
             return null;
         }
+
+
         UV IMeshElement.GetVertex2D(int number)
         {
-            if (null != vertex2DArray)
+            if (null != vertex2DArray || vertex2DArray.Length == 0)
                 return null;
 
             if (number >= 0 && number <= vertex2DArray.Length)
@@ -204,7 +222,7 @@ namespace ParameterUtils
 
         XYZ IMeshElement.GetMeshCenter3D()
         {
-            if (null == vertex3DArray)
+            if (null == vertex3DArray || vertex3DArray.Length == 0)
                 return null;
             
             XYZ tempPoint = new XYZ();
@@ -216,13 +234,14 @@ namespace ParameterUtils
             return tempPoint.Divide(vertex3DArray.Length);
         }
 
+
         /// <summary>
         /// Get the center of all mesh vertices.
         /// </summary>
         /// <returns></returns>
         UV IMeshElement.GetMeshCenter2D()
         {
-            if (null == vertex2DArray)
+            if (null == vertex2DArray || vertex2DArray.Length == 0)
                 return null;
 
             UV tempPoint = new UV();
@@ -233,5 +252,7 @@ namespace ParameterUtils
 
             return tempPoint.Divide(vertex2DArray.Length);
         }
+
+        #endregion
     }
 }

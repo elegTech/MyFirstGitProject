@@ -14,6 +14,8 @@ namespace ParameterUtils
 {
     class AreaMeshIntersection
     {
+
+        #region Member and data accessor
         private List<List<UV>> intersectionList;
 
         public List<List<UV>> IntersectionList
@@ -31,13 +33,18 @@ namespace ParameterUtils
                     return 0;
             }
         }
+        #endregion
 
 
+        #region Core logics
         /// <summary>
         /// Add a closed polygon area represented by point list. 
         /// <param name="?"></param>               
         public void AddPolygon(List<UV> polygonPointList)
         {
+            if (null == polygonPointList || polygonPointList.Count == 0)
+                return;
+
             if(null == intersectionList)
                 intersectionList = new List<List<UV>>();
 
@@ -51,12 +58,16 @@ namespace ParameterUtils
 
             intersectionList.Clear();
         }
+
+        #endregion
     }
 
 
 
     class IrregularAreaPaveManager
     {
+        #region Private members
+
         private Face mFaceToBePaved;
 
         private PolygonArea mFaceBoundary;
@@ -67,9 +78,12 @@ namespace ParameterUtils
         /// Represent intersection area list. A mesh perhaps contains multiple intersection areas.
         /// </summary>
         private List<List<AreaMeshIntersection>> polygonList;
-        
+
+        #endregion
 
 
+        #region Constructor & Data configurator
+         
         public IrregularAreaPaveManager(Face face, double gap, double meshLength, double meshWidth)
         {
             mFaceToBePaved = face;
@@ -96,7 +110,10 @@ namespace ParameterUtils
             Initialize(gap, meshLength, meshWidth);
         }
 
+        #endregion
 
+
+        #region Core privatre logics
         private void Initialize(double gap, double meshLength, double meshWidth)
         {
             if (null == mFaceToBePaved)
@@ -254,34 +271,35 @@ namespace ParameterUtils
         /// <param name="rowNumber">Mesh row number</param>
         /// <param name="columnNumber">Mesh column number</param>
         /// <returns></returns>
-        private bool GeneratePolygonListForMesh(IMeshElement mesh, int rowNumber, int columnNumber)
+        private AreaMeshIntersection GeneratePolygonListForMesh(IMeshElement mesh, int rowNumber, int columnNumber)
         {
             if (null == mesh)
-                return false;
+                return null;
 
             if (rowNumber < 0 || rowNumber >= mFaceBoundary.MeshGenerator.MeshNumberInRow)
-                return false;
+                return null;
 
             if (columnNumber < 0 || rowNumber >= mFaceBoundary.MeshGenerator.MeshNumberInColumn)
-                return false;
+                return null;
 
             List<PointStruct> areaPointInMesh = mFaceBoundary.AreaPointListInMesh[rowNumber][columnNumber];
             List<PointStruct> meshPointList = mFaceBoundary.MeshPointList[rowNumber][columnNumber];
 
 
             AreaMeshIntersection meshAreaList = new AreaMeshIntersection();
-            List<UV> polygonPoints = null;
-            do
+            List<UV> polygonPoints = GeneratePolygonForMesh(areaPointInMesh, meshPointList);
+            while (null != polygonPoints)
             {
-                polygonPoints = GeneratePolygonForMesh(areaPointInMesh, meshPointList);
                 meshAreaList.AddPolygon(polygonPoints);
+                polygonPoints = GeneratePolygonForMesh(areaPointInMesh, meshPointList);
             }
-            while (null != polygonPoints);
-
-            return true;
+            
+            return meshAreaList;
         }
+        #endregion
 
 
+        #region Exposed methods
         public bool Pave()
         {
             if (null == mFaceToBePaved)
@@ -311,7 +329,7 @@ namespace ParameterUtils
                     }
                     else
                     {
-                        GeneratePolygonListForMesh(mFaceBoundary.MeshGenerator.MeshArrays[i,j], i, j);
+                        polygonList[i][j] = GeneratePolygonListForMesh(mFaceBoundary.MeshGenerator.MeshArrays[i,j], i, j);
                     }
                 }
             }
@@ -332,5 +350,6 @@ namespace ParameterUtils
             polygonList.Clear();
             mFaceBoundary.Clear();
         }
+        #endregion
     }
 }

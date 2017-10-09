@@ -17,6 +17,7 @@ using MathNet.Spatial.Euclidean;
 namespace ParameterUtils
 {
 
+    // Point comparer used to sort the area point list.
     class PointComparer : IComparer<PointStruct>
     {
         private UV basePoint;
@@ -70,9 +71,13 @@ namespace ParameterUtils
             }
         }
     }
+
+
+    // A point can be a vertex, an intersection point, or both of them at the same time.
     enum PointFeature { Vertex, Intersection, VertexAndIntersection };
 
 
+    // Use to capsulate a point and its feature.
     class PointStruct
     {
         private UV mPoint;
@@ -106,13 +111,14 @@ namespace ParameterUtils
     }
 
 
-
     /// <summary>
     /// It models a polygon area that will be paved. Currently, the
     /// area boundaries are line segments.
     /// </summary>
     class PolygonArea
     {
+
+        #region Private members
         /// <summary>
         /// A revit solid's face that will be paved by tiles.
         /// </summary>
@@ -168,6 +174,9 @@ namespace ParameterUtils
         /// </summary>
         private UV[] mBoundaryRectangle2D;
 
+        #endregion
+
+        #region Constructor
         public PolygonArea(Face face, double gap, double meshDimensionU, double meshDimensionV)
         {
             mFace = face;
@@ -176,7 +185,9 @@ namespace ParameterUtils
             mMeshWidth = meshDimensionV;
             Initialize();
         }
+        #endregion
 
+        #region Public Data accessor
         public Face Face
         {
             get
@@ -284,7 +295,9 @@ namespace ParameterUtils
         {
             get { return pointLists2D; }
         }
-
+        #endregion
+        
+        #region Core private logics
         private void Initialize()
         {
             // Return when the boundary is inaccessible.
@@ -381,7 +394,7 @@ namespace ParameterUtils
         /// <param name="mesh"></param>
         /// <param name="isCoincidentWithMeshVertex">Return true if the input point is coincident with a mesh vertex.</param>
         /// <returns></returns>
-        public int GetMeshSideThroughPoint(UV point, IMeshElement mesh, ref bool isCoincidentWithMeshVertex)
+        private int GetMeshSideThroughPoint(UV point, IMeshElement mesh, ref bool isCoincidentWithMeshVertex)
         {
             if (null == point || null == mesh)
                 return -1;
@@ -1018,7 +1031,7 @@ namespace ParameterUtils
         /// </summary>
         /// <param name="meshArrays"></param>
         /// <returns></returns>
-        public bool CalculateInsectionPoints()
+        private bool CalculateInsectionPoints()
         {
             pointLists2D = new List<List<PointStruct>>();
 
@@ -1070,7 +1083,7 @@ namespace ParameterUtils
         // intersection points when calculates them in "GetIntersectPointListWithRowLines". However, we 
         // regenerate it here straightly for easy understanding, temporarily ignoring the efficiency. Additionally,
         // the rule for calculating which mesh the point lies in varies when there's no gap between two meshes.  
-        public bool GeneratePointListInMesh()
+        private bool GeneratePointListInMesh()
         {
             if (null == pointLists2D || pointLists2D.Count == 0)
                 return false;
@@ -1099,7 +1112,11 @@ namespace ParameterUtils
             return true;
         }
 
+        #endregion
 
+        #region Public calling method
+
+        // The only public method exposed for outside calling. 
         public bool PrepareAreaPointLists()
         {
             if (null == mMeshGenerator.MeshArrays || mMeshGenerator.MeshArrays.Length == 0)
@@ -1122,5 +1139,7 @@ namespace ParameterUtils
 
             return true;
         }
+
+        #endregion
     }
 }

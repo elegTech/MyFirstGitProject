@@ -21,6 +21,8 @@ namespace ParameterUtils
     /// </summary>
     class SqureMeshGenerator
     {
+        #region Class member variables
+
         /// <summary>
         /// The area that will be filled by mesh. Currently, only rectangle area is acceptable.
         /// This rectangle is represented by 4 vertices in counter-clockwise sequence in coordinate systems.
@@ -69,6 +71,9 @@ namespace ParameterUtils
 
         private bool is3DMesh = false;
 
+        #endregion
+
+        #region Constructors
         public SqureMeshGenerator(XYZ[] rectangleArea3D, double gap, double meshLength, double meshWidth)
         {
             // Make sure the input array has correct items.
@@ -92,7 +97,9 @@ namespace ParameterUtils
             mMeshWidth = meshWidth;
             is3DMesh = false;
         }
+        #endregion
 
+        #region Properties
         public double MeshWidth
         {
             get
@@ -239,7 +246,11 @@ namespace ParameterUtils
             get { return meshNumberInRow; }
         }
 
+        #endregion
 
+        #region Data configurator
+        
+        // Only valid for 3D points.
         public bool ResetData3D(XYZ[] rectangleArea, double gap, double meshLength, double meshWidth)
         {
             Contract.Assert(null != rectangleArea && rectangleArea.Length == Utility.MESHVERTEXNUMBER);
@@ -277,10 +288,13 @@ namespace ParameterUtils
             rectangleArea.CopyTo(mRectangleArea2D, 0);
             mMeshLength = meshLength;
             mMeshWidth = meshWidth;
-            is3DMesh = true;
+            is3DMesh = false;
 
             return true;
         }
+        #endregion
+
+        #region Private methods of core logics
 
         /// Get the number of meshes that can be placed in the range, considering the gap between meshes.
         private int CalculateMeshNum(double range, double meshDimension, double gap)
@@ -338,6 +352,7 @@ namespace ParameterUtils
 
             mMeshArrays = new SquareMesh[meshNumberInRow, meshNumberInColumn];
 
+            #region Generate mesh based on 3D points.
             //if (is3DMesh)
             //{
             //    XYZ meshLocation = null;
@@ -361,27 +376,34 @@ namespace ParameterUtils
             //        }
             //    }
             //}
+            #endregion
 
-            UV meshLocation = null;
-            UV lengthDirection = mRectangleArea2D[1] - mRectangleArea2D[0];
-            UV widthDirection = mRectangleArea2D[3] - mRectangleArea2D[0];
 
-            for (int i = 0; i < meshNumberInRow; i++)
-            {
-                // The first mesh's location of this row. The delta location of adjacent meshes on 
-                // neighbouring rows is the width plusing gap, along the width direction, i.e. the direction of rows.
-                meshLocation = mRectangleArea2D[0] + i * (widthDirection.Normalize() * (mMeshWidth + mGap));
+            #region Generate mesh based on 2D points.
+            else
+            { 
+                UV meshLocation = null;
+                UV lengthDirection = mRectangleArea2D[1] - mRectangleArea2D[0];
+                UV widthDirection = mRectangleArea2D[3] - mRectangleArea2D[0];
 
-                // Given the location information, a square mesh can 
-                mMeshArrays[i, 0] = new SquareMesh(meshLocation, lengthDirection, widthDirection, mMeshLength, mMeshWidth);
-                for (int j = 1; j < meshNumberInColumn; j++)
+                for (int i = 0; i < meshNumberInRow; i++)
                 {
-                    // The location of mesh along length direction is calculated similarly, i.e., each previous mesh's location 
-                    // in the same row plusing delta length and gap is the current mesh's location.
-                    meshLocation = mMeshArrays[i, j - 1].GetVertex2D(0) + j * (lengthDirection.Normalize() * (mMeshLength + mGap));
-                    mMeshArrays[i, j] = new SquareMesh(meshLocation, lengthDirection, widthDirection, mMeshLength, mMeshWidth);
+                    // The first mesh's location of this row. The delta location of adjacent meshes on 
+                    // neighbouring rows is the width plusing gap, along the width direction, i.e. the direction of rows.
+                    meshLocation = mRectangleArea2D[0] + i * (widthDirection.Normalize() * (mMeshWidth + mGap));
+
+                    // Given the location information, a square mesh can 
+                    mMeshArrays[i, 0] = new SquareMesh(meshLocation, lengthDirection, widthDirection, mMeshLength, mMeshWidth);
+                    for (int j = 1; j < meshNumberInColumn; j++)
+                    {
+                        // The location of mesh along length direction is calculated similarly, i.e., each previous mesh's location 
+                        // in the same row plusing delta length and gap is the current mesh's location.
+                        meshLocation = mMeshArrays[i, j - 1].GetVertex2D(0) + j * (lengthDirection.Normalize() * (mMeshLength + mGap));
+                        mMeshArrays[i, j] = new SquareMesh(meshLocation, lengthDirection, widthDirection, mMeshLength, mMeshWidth);
+                    }
                 }
             }
+            #endregion
 
             return true;
         }
@@ -398,6 +420,11 @@ namespace ParameterUtils
 
             return true;
         }
+
+        #endregion
+
+
+        #region Public method for calling.
 
         /// <summary>
         /// Genereate mesh lines from the meshes. A mesh line is represented by two points 
@@ -427,6 +454,8 @@ namespace ParameterUtils
             // is less than that of endpoint. Namely, startpoint->endpoint should be one of the
             // following cases: No.0->No.1; No.1->No.2; No.0->No.3; No.3->No.2; 
             // Moreover, these lines are stored in sequence along 
+
+            #region Generate mesh based on 3D points. 
             if (is3DMesh)
             { 
                 Point3D startPoint;
@@ -465,6 +494,9 @@ namespace ParameterUtils
                     mLineArrayInRow3D[i * 2 + 1] = new Line3D(startPoint, endPoint);
                 }
             }
+            #endregion
+
+            #region Generate mesh based on 2D points. 
             else
             {
                 Point2D startPoint;
@@ -503,8 +535,12 @@ namespace ParameterUtils
                     mLineArrayInRow2D[i * 2 + 1] = new Line2D(startPoint, endPoint);
                 }
             }
+            #endregion
 
             return true;
-        }
+        }  
+        
+        #endregion
+
     }
 }

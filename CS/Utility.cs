@@ -15,6 +15,8 @@ namespace ParameterUtils
 {
     class Utility
     {
+        #region Project Instants
+
         public static double ZERO = 0.000000000000;
         public static double MESHGAPFLOOR = 0.5;
         public static double MESHSIZECEIL = 0.5;
@@ -32,6 +34,9 @@ namespace ParameterUtils
         /// </summary>
         public static double DIMENSIONFLOOR = 10.000000000000;
 
+        #endregion
+
+        #region Project utility opeartions
         public static List<Solid> GetSolid(Element element, Options option)
         {
             Contract.Requires(null != element && null != option);
@@ -145,5 +150,6 @@ namespace ParameterUtils
 
             return vertexLists2D;
         }
+        #endregion
     }
 }
